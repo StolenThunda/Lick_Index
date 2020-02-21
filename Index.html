@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <?!= include('main'); ?>
+    <?!= include('styles'); ?>
+    <title>Lick Index Entry</title>
+</head>
+
+<body>
+    <div class="container" style="width:90vw">
+        <div class="row">
+            <div class="col-lg-2 w-400">
+                <iframe width="631.3304150453956" height="390" seamless frameborder="0" scrolling="no" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRlIIiIf9efrF6klFr10-p1-cHRa779RYdlD2i4zNBr6yLyIW82gFPz6MOFji16T44vKvB4sa5VpDQb/pubchart?oid=798469590&amp;format=interactive"></iframe>
+            </div>
+            <div class="col-lg-4">
+                <form id="myForm" onsubmit="handleFormSubmit(this)">
+                    <p class="h4 mb-4 text-center">Lick Entry Form</p>
+                    <p><a href="https://docs.google.com/spreadsheets/d/1zh-oGZOGsz6-iZ5nk33CyJQ5cXYF1KEiM-wx8fAunv4/edit#gid=0"
+                            target='_blank'> View GSheet </a></p>
+                    <div class="form-row">
+
+                        <div class="form-group col w-200">
+
+                            <label for="course_title">Course</label>
+                            <select class="form-control" name="course_title" id="course_title" value="Course">
+                                <option>--</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group col">
+                            <label for="lbl_lick">Lick Title</label>
+                            <input type="text" class="form-control" id="lbl_lick" name="lbl_lick"
+                                placeholder="Lick Title">
+                        </div>
+
+                    </div>
+                    <div class="form-row">
+                        <h4>General</h4>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col w-200">
+                            <label for="total_notes">Total Notes</label>
+                            <input type="number" min="1" max="100" class="form-control" id="total_notes"
+                                name="total_notes" value=1>
+                        </div>
+                        <div class="form-group col">
+                            <label for="timing_diff">Timing Difficulty</label>
+                            <input type="number" min="0" max="100" step="5" class="form-control" id="timing_diff"
+                                name="timing_diff" value=0>
+                        </div>
+
+                        <div class="form-group col">
+                            <label for="speed_diff">Speed Difficulty</label>
+                            <input type="number" min="0" max="100" step="5" class="form-control" id="speed_diff"
+                                name="speed_diff" value=0>
+                        </div>
+
+                    </div>
+                    <div class="form-row">
+                        <h4>Technique</h4>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="pick_diff">Picking Difficulty</label>
+                            <input type="number" min="0" max="100" step="5" class="form-control" id="pick_diff"
+                                name="pick_diff" value=0>
+                        </div>
+                        <div class="form-group col ">
+                            <label for="finger_diff">Fingering Difficulty</label>
+                            <input type="number" min="0" max="100" step="5" class="form-control" id="finger_diff"
+                                name="finger_diff" value=0>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col ">
+                            <label for="bending_cnt">Bending Count</label>
+                            <input type="number" min="0" max="100" class="form-control" id="bending_cnt"
+                                name="bending_cnt" value=0>
+                        </div>
+                        <div class="form-group col ">
+                            <label for="legato_cnt">Legato Count (Hammer-ons, Pull-Offs)</label>
+                            <input type="number" min="0" max="100" class="form-control" id="legato_cnt"
+                                name="legato_cnt" value=0>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="has_slides" id="has_slides">
+                            <label class="form-check-label" for="has_slides">Has Slides</label>
+                        </div>
+                        <div class="form-group col-md form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="has_mutes" id="has_mutes">
+                            <label class="form-check-label" for="has_mutes">Has Mutes</label>
+                        </div>
+                        <div class="form-group col-md form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="has_vib" id="has_vib">
+                            <label class="form-check-label" for="has_vib">Has Vibrato</label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <h4>Meta</h4>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="boxes_used">Boxes Used</label><br />
+                            <input type="text" id="boxes_used" name="boxes_used">
+                        </div>
+                        <div class="form-group col">
+                            <label for="intensity">Intensity</label>
+                            <input type="number" min="0" max="100" step="10" class="form-control" id="intensity"
+                                name="intensity" value=0>
+                        </div>
+                        <div class="form-group col">
+                            <label for="chords">Chords</label><br />
+                            <input type="text" id="chords" name="chords" placeholder="">
+                        </div>
+
+                    </div>
+                    <!--<button type="submit" class="btn btn-primary btn-block">Submit</button>-->
+
+                    <input type="button" class="btn btn-primary" onClick="doAction(this)" name='create'
+                        value="Insert New" />
+                    <input type="button" class="btn btn-primary" style="display: none" onclick="doAction(this)"
+                        name='update' value="Update Current" />
+                    <input type="button" class="btn btn-primary" onclick="doAction(this)" name='read'
+                        value="Get Record" />
+                    <input type="button" class="btn btn-primary" onclick="doAction(this)" name='delete'
+                        value="Delete Record" />
+                    <input type="button" class="btn btn-primary" onclick="doAction(this)" name='dump'
+                        value="Read All" />
+                </form>
+            </div>
+            <div class="row">
+                <div id="loader"></div>
+                <p id="re"></p>
+                <div id="output"></div>
+                <div id='tip_container' class="form-row">
+                </div>
+                <?!=include('criteria');?>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
