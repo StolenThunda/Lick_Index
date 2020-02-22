@@ -1,4 +1,6 @@
 <script>
+    var chartEditor = null;
+
     function output_table(data) {
         json = JSON.parse(data)
         // CREATE DYNAMIC TABLE.
@@ -65,7 +67,6 @@
         });
     }
 
-    // Prevent forms from submitting.
     function preventFormSubmit() {
         var forms = document.querySelectorAll('form');
         for (var i = 0; i < forms.length; i++) {
@@ -77,34 +78,25 @@
 
     function handleFormSubmit(formObject) {
         console.log(formObject);
-        google.script.run.processForm(formObject);
-        document.getElementById("myForm").reset();
+
     }
 
-    function clearList(select) {
-        var length = select.options.length - 1;
-        $.each(select.options, function (index, value) {
-            alert(index + ": " + value);
-        });
-        //     for (i = 0; i < length; i++) {
-        //            if (select.option[i].text !== '--') select.options[i].remove();
-        //     }
+    function getCourses() {
+        google.script.run
+            .withFailureHandler(onFailure)
+            .withSuccessHandler(addListValues)
+            .get_sheet_names();
+        labels()
     }
 
     function getLicks(e) {
+        document.getElementById('lbl_lick').value = "";
         var title = e.options[e.selectedIndex].text;
+        if (title == '--') return;
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(addListValues)
-            .licks_for_course(title);
-    }
-
-    function addList() {
-        google.script.run
-            .withFailureHandler(onFailure)
-            .withSuccessHandler(addListValues)
-            .sheetnames();
-        labels()
+            .get_licks_for_course(title);
     }
 
     function addListValues(values) {
@@ -112,7 +104,9 @@
         values = values[0];
         var list = document.getElementById(el);
         clearList(list);
+        if (values === undefined) return;
         for (var i = 0; i < values.length; i++) {
+            if (values[i] === "") continue;
             var option = document.createElement("OPTION");
             option.value = values[i];
             option.text = values[i];
@@ -120,13 +114,27 @@
         }
     }
 
+    function clearList(list) {
+        console.log(list)
+        // if (list.options == undefined) return;
+        for (i = 0; i < list.children.length - 1; i++) {
+            if (list.children[i].text !== '--') list.children[i].remove();
+        }
+    }
+
     function onFailure(err) {
         alert('There was an error!' + err.message);
+    }
+
+    function onSuccess(val) {
+        var msg = (val) ? 'Lick successfully deleted' : 'Lick not deleted';
+        alert(msg);
     }
 
     function doAction(btn) {
         var title = document.getElementById('course_title').value
         var lick = document.getElementById('lbl_lick').value
+        var frm = $(btn).parent('form')[0];
         switch (btn.name) {
             case 'read':
                 if (title !== '--' && lick !== '') {
@@ -134,8 +142,8 @@
                     google.script.run
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(populateForm)
-                        .read_value(title, lick);
-                    $('#chart').show();
+                        .get_lick(title, lick);
+
                     break;
                 }
                 alert('Title and Lick required for this search')
@@ -151,37 +159,44 @@
                 alert('Choose A course')
                 break;
             case 'delete':
-            case 'update':
-                toggleInsert();
-                $('#chart').show();
-                break;
-            default:
-                toggleInsert();
-                $('#chart').hide();
-                handleFormSubmit($(btn).parent('form')[0]);
+                if (confirm(`Are you sure you want to delete lick: "${lick}"`)) {
+                    google.script.run
+                        .withFailureHandler(onFailure)
+                        .withSuccessHandler(onSuccess)
+                        .delete_lick(title, lick);
+                }
+                case 'update':
+                    toggleInsert();
+                    if (confirm(`Are you sure you want to update lick: "${lick}"`)) {
+                        google.script.run
+                            .withFailureHandler(onFailure)
+                            .withSuccessHandler(onSuccess)
+                            .update_lick(frm);
+                    }
+                    $('#mychart').show();
+                    break;
+                default:
+                    $('#mychart').hide();
+                    google.script.run
+                        .withFailureHandler(onFailure)
+                        .withSuccessHandler(toggleInsert)
+                        .processForm(frm);
+                    frm.reset();
         }
-        if (title !== '--' && lick !== '') {
-            updateChart(title, lick);
-        }
-
-    }
-
-    function updateChart(title, lick) {
-        var title = title || document.getElementById('course_title').value
-        var lick = lick || document.getElementById('lbl_lick').value
-        google.script.run
-            .withFailureHandler(onFailure)
-            .withSuccessHandler(test)
-            .update_chart(title, lick);
+        // if (title !== '--' && lick !== '') {
+        //     google.script.run
+        //         .withFailureHandler(onFailure)
+        //         .withSuccessHandler(() => { $('#mychart').show;})
+        //         .update_chart(title, lick);
+        // }
     }
 
     function toggleInsert(name) {
-        var toggle = (name !== 'update');
-        $('input[name=create]').toggle(toggle)
-        $('input[name=update]').toggle(!toggle)
+        var toggle = (name === 'update');
+        $('input[name=create]').toggle(!toggle)
+        $('input[name=update]').toggle(toggle)
 
     }
-
 
     function populateForm(data) {
         Object.entries(data).forEach(function (key, value) {
@@ -189,6 +204,7 @@
             key = key[0]
             if (key !== '') {
                 var ctrl = $('#' + key);
+                // alert(`${ctrl.prop('id')} (${ctrl.prop('type')}): ${value}`);
                 switch (ctrl.prop("type")) {
                     case "radio":
                     case "checkbox":
@@ -196,6 +212,8 @@
                             if ($(this).attr('value') !== value) $(this).attr("checked", value);
                         });
                         break;
+                    case "number":
+                    case "text":
                     default:
                         ctrl.val(value);
                 }
@@ -203,14 +221,63 @@
         });
     }
 
+    function updateChartData() {
+        var title = document.getElementById('course_title').value
+        var lick = document.getElementById('lbl_lick').value
+        google.script.run
+            .withFailureHandler(onFailure)
+            .withSuccessHandler(loadChartData)
+            .update_chart(title, lick)
+    }
 
+    function loadChartData(chart_data) {
+        if (typeof chart_data === 'undefined') return;
+        console.log(chart_data.data);
+        var data = new google.visualization.arrayToDataTable(chart_data.data, false);
+        var options = {
+            chart: {
+                title: chart_data.title.split(' ')[0],
+                subtitle: 'Lick Landscape'
+            },
+            width: 600,
+            height: 500,
+            bar: {
+                groupWidth: "95%"
+            },
+            vAxis: {
+                title: 'Rating (scale of 1-100)'
+            },
+            hAxis: {
+                slantedText: true,
+                viewWindowMode: 'pretty'
+            },
+        };
+        var chart = new google.charts.Bar(document.getElementById('mychart'));
+        chart.draw(data, google.charts.Bar.convertOptions(options));
+
+    }
+    // On "OK" save the chart to a <div> on the page.
+    function redrawChart() {
+        chartEditor.getChartWrapper().draw(document.getElementById('mychart'));
+    }
+    function loader() {
+        google.charts.load('current', {
+            packages: ['corechart', 'bar']
+        });
+        google.charts.setOnLoadCallback(loadChartData);
+        preventFormSubmit();
+        getCourses();
+        loadChartData();
+        // test(); 
+        toggleInsert();
+    }
+
+ 
 
     function test(data) {
 
         //alert(data)
     }
-    window.addEventListener('load', preventFormSubmit);
-    window.addEventListener('load', addList);
-    //window.addEventListener('load', test);
-    toggleInsert();
+
+    window.addEventListener('load', loader);
 </script>

@@ -9,38 +9,45 @@ function include(filename) {
         .getContent();
 }
 
+function extract_form_data_(frm) {
+    var num_notes = parseInt(frm.total_notes);
+    return [
+        frm.lbl_lick,
+        parseInt(frm.finger_diff),
+        parseInt(frm.pick_diff),
+        parseInt(frm.legato_cnt),
+        parseInt(frm.legato_cnt / num_notes),
+        parseInt(frm.bending_cnt),
+        parseInt(frm.bending_cnt / num_notes),
+        frm.has_slides == 'on',
+        frm.has_vib == 'on',
+        frm.has_mutes == 'on','',
+        frm.boxes_used,
+        parseInt(frm.intensity),
+        frm.chords, '',
+        num_notes,
+        parseInt(frm.speed_diff),
+        parseInt(frm.timing_diff),
+    ]
+}
 /* @Process Form */
 function processForm(frm) {
-    var url = PropertiesService.getScriptProperties().getProperty('SPREADSHEET') //"https://docs.google.com/spreadsheets/d/1zh-oGZOGsz6-iZ5nk33CyJQ5cXYF1KEiM-wx8fAunv4/edit#gid=2102881368";
-    var ss = SpreadsheetApp.openByUrl(url);
-    var ws = ss.getSheetByName(frm.course_title);
-    if (ws != null) {
-        var row = new Array();
-        row.push(frm.lbl_lick,
-            parseInt(frm.finger_diff),
-            parseInt(frm.pick_diff),
-            frm.legato_cnt,
-            frm.legato_cnt / frm.total_notes,
-            frm.bending_cnt,
-            frm.bending_cnt / frm.total_notes,
-            frm.has_slides == 'on',
-            frm.has_mutes == 'on',
-            frm.has_vib == 'on',
-            frm.boxes_used,
-            frm.intensity,
-            frm.chords, '',
-            frm.total_notes,
-            frm.speed_diff,
-            frm.timing_diff
-        );
-        Logger.log(JSON.stringify(row));
-        ws.appendRow(row);
-    } else {
-        Logger.log('Sheet %s: Not Found', frm.course_title)
-    }
+    var ws = get_sheet_by_course_title_(frm.course_title);
+    if (ws != null) return ws.appendRow(extract_form_data_(frm));
+    Logger.log('Sheet %s: Not Found', frm.course_title)
 }
 
-function sheetnames() {
+function update_lick(frm) {
+    var ws = get_sheet_by_course_title_(frm.course_title);
+    var lick_row = get_lick_row_(ws, frm.lbl_lick);
+    var frm_data = extract_form_data_(frm)
+    Logger.log(`Frmdata: ${frm_data}`);
+    Logger.log(`Lick Range: ${lick_row.data_range}`);
+    lick_row.data_range.setValues([]);
+    return update_chart(frm.course_title, frm.lbl_lick);
+}
+
+function get_sheet_names() {
     var out = new Array()
     var sn;
     var sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
@@ -51,143 +58,143 @@ function sheetnames() {
     return [out, 'course_title'];
 }
 
-function licks_for_course(sheet) {
+function get_licks_for_course(sheet) {
     var out = new Array()
-    var url = PropertiesService.getScriptProperties().getProperty('SPREADSHEET');
-    var ss = SpreadsheetApp.openByUrl(url);
-    var ws = ss.getSheetByName(sheet);
+    var ws = get_sheet_by_course_title_(sheet);
     var lr = ws.getLastRow();
     for (var i = 2; i <= lr; i++) {
         out.push(ws.getRange(i, 1).getValue());
     }
     return [out, 'lick_names'];
 }
-//  
-//function insert_value(request,sheet){
-// 
-// 
-//   var id = request.parameter.id;
-//  var country = request.parameter.name;
-//  
-//  var flag=1;
-//  var lr= sheet.getLastRow();
-//  for(var i=1;i<=lr;i++){
-//    var id1 = sheet.getRange(i, 2).getValue();
-//    if(id1==id){
-//      flag=0;
-//  var result="Id already exist..";
-//    } }
-//  //add new row with recieved parameter from client
-//  if(flag==1){
-//  var d = new Date();
-//    var currentTime = d.toLocaleString();
-//  var rowData = sheet.appendRow([currentTime,id,country]);  
-//  var result="Insertion successful";
-//  }
-//     result = JSON.stringify({
-//    "result": result
-//  });  
-//    
-//  return ContentService
-//  .createTextOutput(request.parameter.callback + "(" + result + ")")
-//  .setMimeType(ContentService.MimeType.JAVASCRIPT);   
-//  }
-
 
 function update_chart(sheet, lick) {
-    var url = PropertiesService.getScriptProperties().getProperty('SPREADSHEET');
-    var ss = SpreadsheetApp.openByUrl(url);
-    var sheet = ss.getSheetByName(sheet + '_data');
-    if (sheet != null) {
-        var lick_chart = sheet.getCharts()[0];
-
-        var lick_title = lick + ' Lick Detail';
-
-        var lr = sheet.getLastRow();
-        return lr;
-        for (var i = 1; i <= lr; i++) {
-            var lick_id = sheet.getRange(i, 1).getValue();
-            if (lick_id == lick) {
-                var newRange = sheet.getRange(i, 1, 1, sheet.getLastColumn());
-                return newRange;
-                var newChart = lick_chart
-                    .modify()
-                    .clearRanges()
-                    .addRange(newRange)
-                    .setOption('title', lick_title)
-                    .build();
-                sheet.updateChart(newChart);
-                return lick_title;
-            }
-        }
-    } else {
-        return "SHEET HAS NO CHART DATA"
-    }
+    var data_sheet = get_sheet_by_course_title_(sheet);
+    var ws = get_sheet_by_course_title_(sheet)
+    var newRange = get_lick_row_(data_sheet, lick);
+    var chart_data = {
+        data : process_chart_data([get_header_row_(ws), newRange.data]),
+        title: lick + ' Lick Detail'
+    };
+    Logger.log(chart_data);
+    return chart_data;
 }
 
-function read_value(sheet, lick) {
-    var toObj = (ks, vs) => ks.reduce((o, k, i) => {
+function process_chart_data(data){
+    // return data;
+    var rem1, rem2, msgs = [];
+    head = data[0];
+    info = data[1];
+    idx = [4, 6, 10];  // column index on sheet
+    for (var i = idx.length-1; i >= 0; i--){
+        // Logger.log(`REMOVING (${idx[i]}): ${head[idx[i]]} == ${info[idx[i]]}`);
+        rem1 = head.splice(idx[i], 1);
+        rem2 = info.splice(idx[i], 1);
+        msgs.push(`Removed (${idx[i]}): ${rem1} == ${rem2}`);
+    }
+    // remove text fields, percentages, and checkboxes from data
+    for (var j = info.length-1; j >= 0; j--) {        
+        if (typeof info[j] !== 'number') {
+            // Logger.log(`${info[j]} : ${typeof info[j]}`)
+            rem1 = head.splice(j, 1);
+            rem2 = info.splice(j, 1);
+            msgs.push(`Removed (${j}): ${rem1} == ${rem2}`);
+        }
+    }
+    var vals = [["Attribute", "value"]];
+    for (var x = 0; x <= info.length -1; x++){
+        vals.push([head[x], info[x]]);
+    }
+    // Logger.log(`Removed: ${msgs}`);
+    return vals;
+    return [head, info];
+}
+
+function delete_lick(sheet, lick) {
+    ws.deleteRow(get_lick_row_(get_sheet_by_course_title_(sheet), lick).idx);
+}
+
+function get_lick(sheet, lick) {
+    var zip = (ks, vs) => ks.reduce((o, k, i) => {
         o[k] = vs[i];
         return o;
     }, {});
-
-    var url = PropertiesService.getScriptProperties().getProperty('SPREADSHEET');
-    var ss = SpreadsheetApp.openByUrl(url);
-    var ws = ss.getSheetByName(sheet);
-    var flag = 0;
-    var lr = ws.getLastRow();
-    for (var i = 1; i <= lr; i++) {
-        var lick_id = ws.getRange(i, 1).getValue();
-        if (lick_id == lick) {
-            var row = ws.getRange(i, 1, 1, ws.getLastColumn()).getValues()[0];
-            var headers = ['lbl_lick',
-                'finger_diff',
-                'pick_diff',
-                'legato_cnt',
-                'bending_cnt',
-                'has_slides',
-                'has_mutes',
-                'has_vib',
-                '',
-                'boxes_used',
-                'intensity',
-                'chords',
-                '',
-                'total_notes',
-                'speed_diff',
-                'timing_diff',
-            ];
-            return toObj(headers, row);
-        }
-    }
+    var ws = get_sheet_by_course_title_(sheet)
+    var row = get_lick_row_(ws, lick).data;
+    var form_ctrls = [
+        'lbl_lick',
+        'finger_diff',
+        'pick_diff',
+        'legato_cnt', 'L_dense',
+        'bending_cnt', 'B_dense',
+        'has_slides',
+        'has_vib',
+        'has_mutes',
+        'boxes_used',
+        'intensity',
+        'chords', 'GEN',
+        'total_notes',
+        'speed_diff',
+        'timing_diff',
+    ];
+    var final = zip(form_ctrls, row);
+    Logger.log(final)
+    return final;
 }
 
-
 function read_all_values(sheet) {
-
-    var url = PropertiesService.getScriptProperties().getProperty('SPREADSHEET')
-    var ss = SpreadsheetApp.openByUrl(url);
-
+    var sh = get_sheet_by_course_title_(sheet);
     var data = {};
-
-    data.records = readData_(ss, sheet);
+    data.records = read_data_(sh);
     output = ContentService.createTextOutput(JSON.stringify(data)),
         output.setMimeType(ContentService.MimeType.JSON);
     Logger.log(output);
     return JSON.stringify(data);
 }
 
+function get_sheet_by_course_title_(sheet) {   
+    return get_SS_().getSheetByName(sheet);
+}
 
-function readData_(ss, sheetname, properties) {
+function get_lick_row_(ws, lick) {
 
+    var lr = ws.getLastRow();
+    var lc = ws.getLastColumn()
+    var header = ws.getRange(1, 1, 1, lc);
+    var range = {
+        lr: lr,
+        lc: lc,
+        idx: -1,
+        data: [],
+        h_range: header,
+        notation: "A:1",
+        range: null
+    }
+    for (var i = 1; i <= lr; i++) {
+        var lick_id = ws.getRange(i, 1).getValue();
+        if (lick_id == lick) {
+            r = ws.getRange(i, 1, 1, lc);
+            range.data_range = r;
+            range.idx = i;
+            range.data = r.getValues()[0];
+            range.notation = r.getA1Notation();
+            break;
+        }
+    }
+    // Logger.log(range);
+    return range;
+}
+
+function read_data_(sheetname, properties) {
+    var sh = get_sheet_by_course_title_(sheetname);
     if (typeof properties == "undefined") {
-        properties = getHeaderRow_(ss, sheetname);
+        properties = get_header_row_(sh);
         properties = properties.map(function (p) {
             return p.replace(/\s+/g, '_');
         });
     }
 
-    var rows = getDataRows_(ss, sheetname),
+    var rows = get_data_rows_(sh),
         data = [];
 
     for (var r = 0, l = rows.length; r < l; r++) {
@@ -204,17 +211,15 @@ function readData_(ss, sheetname, properties) {
     return data;
 }
 
-
-
-function getDataRows_(ss, sheetname) {
-    var sh = ss.getSheetByName(sheetname);
-
+function get_data_rows_(sh) {
     return sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
 }
 
-
-function getHeaderRow_(ss, sheetname) {
-    var sh = ss.getSheetByName(sheetname);
-
+function get_header_row_(sh) {
     return sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+}
+
+function get_SS_() {
+    var url = PropertiesService.getScriptProperties().getProperty('SPREADSHEET');
+    return SpreadsheetApp.openByUrl(url);
 }

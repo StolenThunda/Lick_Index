@@ -1,0 +1,5 @@
+**/node_modules/**
+package*
+.git/**
+*.md 
+*.code-workspace

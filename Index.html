@@ -3,6 +3,7 @@
 
 <head>
     <base target="_top">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
         integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
@@ -12,12 +13,8 @@
 </head>
 
 <body>
-    <div class="container" style="width:90vw">
-        <div class="row">
-            <div class="col-lg-2 w-400">
-                <iframe width="631.3304150453956" height="390" seamless frameborder="0" scrolling="no" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRlIIiIf9efrF6klFr10-p1-cHRa779RYdlD2i4zNBr6yLyIW82gFPz6MOFji16T44vKvB4sa5VpDQb/pubchart?oid=798469590&amp;format=interactive"></iframe>
-            </div>
-            <div class="col-lg-4">
+    <div class="container">
+            <div class="col">
                 <form id="myForm" onsubmit="handleFormSubmit(this)">
                     <p class="h4 mb-4 text-center">Lick Entry Form</p>
                     <p><a href="https://docs.google.com/spreadsheets/d/1zh-oGZOGsz6-iZ5nk33CyJQ5cXYF1KEiM-wx8fAunv4/edit#gid=0"
@@ -27,7 +24,8 @@
                         <div class="form-group col w-200">
 
                             <label for="course_title">Course</label>
-                            <select class="form-control" name="course_title" id="course_title" value="Course">
+                            <select onchange="getLicks(this)" class="form-control" name="course_title" id="course_title"
+                                value="Course">
                                 <option>--</option>
                             </select>
                         </div>
@@ -35,7 +33,8 @@
                         <div class="form-group col">
                             <label for="lbl_lick">Lick Title</label>
                             <input type="text" class="form-control" id="lbl_lick" name="lbl_lick"
-                                placeholder="Lick Title">
+                                placeholder="Lick Title" list="lick_names" onblur="updateChartData()">
+                            <datalist id='lick_names'></datalist>
                         </div>
 
                     </div>
@@ -135,13 +134,13 @@
                         value="Read All" />
                 </form>
             </div>
-            <div class="row">
+            <div id='mychart' class="col">
+            </div>
+            <div class="col">
                 <div id="loader"></div>
                 <p id="re"></p>
                 <div id="output"></div>
-                <div id='tip_container' class="form-row">
-                </div>
-                <?!=include('criteria');?>
+                <div id='tip_container' class="form-row"><?!=include('criteria');?></div>                
             </div>
         </div>
     </div>
