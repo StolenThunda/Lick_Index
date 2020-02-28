@@ -13,21 +13,21 @@ function extract_form_data_(frm) {
     var num_notes = parseInt(frm.total_notes);
     return [
         frm.lbl_lick,
-        parseInt(frm.finger_diff),
-        parseInt(frm.pick_diff),
-        parseInt(frm.legato_cnt),
-        parseInt(frm.legato_cnt / num_notes),
-        parseInt(frm.bending_cnt),
-        parseInt(frm.bending_cnt / num_notes),
+        parseInt(frm.finger_diff) || 0,
+        parseInt(frm.pick_diff) || 0,
+        parseInt(frm.legato_cnt) || 0,
+        parseInt(frm.legato_cnt  || 0) / num_notes,
+        parseInt(frm.bending_cnt) || 0,
+        parseInt(frm.bending_cnt  || 0) / num_notes,
         frm.has_slides == 'on',
         frm.has_vib == 'on',
-        frm.has_mutes == 'on','',
+        frm.has_mutes == 'on',
         frm.boxes_used,
-        parseInt(frm.intensity),
+        parseInt(frm.intensity) || 0,
         frm.chords, '',
         num_notes,
-        parseInt(frm.speed_diff),
-        parseInt(frm.timing_diff),
+        parseInt(frm.speed_diff) || 0,
+        parseInt(frm.timing_diff) || 0,
     ]
 }
 /* @Process Form */
@@ -43,7 +43,7 @@ function update_lick(frm) {
     var frm_data = extract_form_data_(frm)
     Logger.log(`Frmdata: ${frm_data}`);
     Logger.log(`Lick Range: ${lick_row.data_range}`);
-    lick_row.data_range.setValues([]);
+    lick_row.data_range.setValues([frm_data]);
     return update_chart(frm.course_title, frm.lbl_lick);
 }
 
@@ -55,7 +55,7 @@ function get_sheet_names() {
         sn = sheets[i].getName()
         if (sn.indexOf('_data') < 0) out.push(sn)
     }
-    return [out, 'course_title'];
+    return out; //[out, 'course_title'];
 }
 
 function get_licks_for_course(sheet) {
@@ -65,16 +65,18 @@ function get_licks_for_course(sheet) {
     for (var i = 2; i <= lr; i++) {
         out.push(ws.getRange(i, 1).getValue());
     }
-    return [out, 'lick_names'];
+    // return [out, 'lick_names'];
+    return out;
 }
 
 function update_chart(sheet, lick) {
-    var data_sheet = get_sheet_by_course_title_(sheet);
-    var ws = get_sheet_by_course_title_(sheet)
-    var newRange = get_lick_row_(data_sheet, lick);
+    var ws = get_sheet_by_course_title_(sheet);
+    var newRange = get_lick_row_(ws, lick);
+    var data = process_chart_data([get_header_row_(ws), newRange.data])
     var chart_data = {
-        data : process_chart_data([get_header_row_(ws), newRange.data]),
-        title: lick + ' Lick Detail'
+        xs : data.xs,
+        ys : data.ys,
+        title: lick + ' Lick Landscape'
     };
     Logger.log(chart_data);
     return chart_data;
@@ -106,12 +108,13 @@ function process_chart_data(data){
         vals.push([head[x], info[x]]);
     }
     // Logger.log(`Removed: ${msgs}`);
-    return vals;
-    return [head, info];
+    // return vals;
+    return {xs:head, ys:info};
 }
 
 function delete_lick(sheet, lick) {
-    ws.deleteRow(get_lick_row_(get_sheet_by_course_title_(sheet), lick).idx);
+    var ws = get_sheet_by_course_title_(sheet);
+    return ws.deleteRow(get_lick_row_(ws, lick).idx);
 }
 
 function get_lick(sheet, lick) {
@@ -157,7 +160,6 @@ function get_sheet_by_course_title_(sheet) {
 }
 
 function get_lick_row_(ws, lick) {
-
     var lr = ws.getLastRow();
     var lc = ws.getLastColumn()
     var header = ws.getRange(1, 1, 1, lc);
@@ -181,7 +183,6 @@ function get_lick_row_(ws, lick) {
             break;
         }
     }
-    // Logger.log(range);
     return range;
 }
 

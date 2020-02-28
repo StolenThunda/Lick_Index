@@ -1,6 +1,4 @@
 <script>
-    var chartEditor = null;
-
     function output_table(data) {
         json = JSON.parse(data)
         // CREATE DYNAMIC TABLE.
@@ -76,49 +74,44 @@
         }
     }
 
-    function handleFormSubmit(formObject) {
-        console.log(formObject);
-
-    }
-
-    function getCourses() {
+    function getCourses(e) {
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(addListValues)
+            .withUserObject(e)
             .get_sheet_names();
         labels()
     }
 
     function getLicks(e) {
-        document.getElementById('lbl_lick').value = "";
+        var licks = document.getElementById('lick_names');
+        licks.innerHTML = "";
         var title = e.options[e.selectedIndex].text;
         if (title == '--') return;
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(addListValues)
+            .withUserObject(licks)
             .get_licks_for_course(title);
     }
 
-    function addListValues(values) {
-        var el = values[1];
-        values = values[0];
-        var list = document.getElementById(el);
-        clearList(list);
-        if (values === undefined) return;
+    function addListValues(values, el) {
+        clearList(el);
+        if (typeof values === 'undefined') return;
         for (var i = 0; i < values.length; i++) {
             if (values[i] === "") continue;
             var option = document.createElement("OPTION");
             option.value = values[i];
             option.text = values[i];
-            list.appendChild(option);
+            el.appendChild(option);
         }
     }
 
     function clearList(list) {
-        console.log(list)
-        // if (list.options == undefined) return;
-        for (i = 0; i < list.children.length - 1; i++) {
-            if (list.children[i].text !== '--') list.children[i].remove();
+        if (list == null) return;
+        console.info(list.nodeName);
+        for (i = list.options.length - 1; i >= 0; i--) {
+            if (list.options[i].text !== '--') list.remove(i);
         }
     }
 
@@ -127,15 +120,20 @@
     }
 
     function onSuccess(val) {
-        var msg = (val) ? 'Lick successfully deleted' : 'Lick not deleted';
+        var msg = (val) ? 'Op Successful' : 'No Joy';
         alert(msg);
     }
 
     function doAction(btn) {
         var title = document.getElementById('course_title').value
         var lick = document.getElementById('lbl_lick').value
-        var frm = $(btn).parent('form')[0];
+        var frm = $('form').serialize(); //$(btn).parent('form')[0]; 
+        console.log('Form:');
+        console.dir(frm);
         switch (btn.name) {
+            case 'reset':
+                if (frm) frm.trigger('reset');;
+                break;
             case 'read':
                 if (title !== '--' && lick !== '') {
                     toggleInsert('update');
@@ -143,7 +141,7 @@
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(populateForm)
                         .get_lick(title, lick);
-
+                    updateChartData();
                     break;
                 }
                 alert('Title and Lick required for this search')
@@ -164,31 +162,29 @@
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(onSuccess)
                         .delete_lick(title, lick);
+                    document.getElementById('lbl_lick').value = "";
                 }
                 case 'update':
                     toggleInsert();
                     if (confirm(`Are you sure you want to update lick: "${lick}"`)) {
                         google.script.run
                             .withFailureHandler(onFailure)
-                            .withSuccessHandler(onSuccess)
+                            .withSuccessHandler(loadChartData)
                             .update_lick(frm);
                     }
                     $('#mychart').show();
                     break;
+                case 'create':
                 default:
-                    $('#mychart').hide();
-                    google.script.run
-                        .withFailureHandler(onFailure)
-                        .withSuccessHandler(toggleInsert)
-                        .processForm(frm);
-                    frm.reset();
+                    // $('#mychart').hide();
+                    if (title !== '--' && lick !== '') {
+                        google.script.run
+                            .withFailureHandler(onFailure)
+                            .withSuccessHandler(onSuccess)
+                            .processForm(frm);
+                        frm.trigger('reset');
+                    }
         }
-        // if (title !== '--' && lick !== '') {
-        //     google.script.run
-        //         .withFailureHandler(onFailure)
-        //         .withSuccessHandler(() => { $('#mychart').show;})
-        //         .update_chart(title, lick);
-        // }
     }
 
     function toggleInsert(name) {
@@ -224,58 +220,55 @@
     function updateChartData() {
         var title = document.getElementById('course_title').value
         var lick = document.getElementById('lbl_lick').value
-        google.script.run
-            .withFailureHandler(onFailure)
-            .withSuccessHandler(loadChartData)
-            .update_chart(title, lick)
+        if (title !== '--' && lick !== '') {
+            google.script.run
+                .withFailureHandler(onFailure)
+                .withSuccessHandler(loadChartData)
+                .update_chart(title, lick);
+        }
     }
 
     function loadChartData(chart_data) {
-        if (typeof chart_data === 'undefined') return;
-        console.log(chart_data.data);
-        var data = new google.visualization.arrayToDataTable(chart_data.data, false);
-        var options = {
-            chart: {
-                title: chart_data.title.split(' ')[0],
-                subtitle: 'Lick Landscape'
+        var ctx = $('#mychart'); //document.getElementById('mychart').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chart_data.xs,
+                datasets: [{
+                    label: chart_data.title,
+                    data: chart_data.ys,
+                    backgroundColor: genRGBA(chart_data.xs.length, 0.2),
+                    borderColor: genRGBA(chart_data.xs.length, 1),
+                    borderWidth: 1
+                }]
             },
-            width: 600,
-            height: 500,
-            bar: {
-                groupWidth: "95%"
-            },
-            vAxis: {
-                title: 'Rating (scale of 1-100)'
-            },
-            hAxis: {
-                slantedText: true,
-                viewWindowMode: 'pretty'
-            },
-        };
-        var chart = new google.charts.Bar(document.getElementById('mychart'));
-        chart.draw(data, google.charts.Bar.convertOptions(options));
-
-    }
-    // On "OK" save the chart to a <div> on the page.
-    function redrawChart() {
-        chartEditor.getChartWrapper().draw(document.getElementById('mychart'));
-    }
-    function loader() {
-        google.charts.load('current', {
-            packages: ['corechart', 'bar']
+            options: {                
+                
+            }
         });
-        google.charts.setOnLoadCallback(loadChartData);
+    }
+
+    function genRGBA(numCols, opacity) {
+        var colColors = [];
+        const getRand256 = () => {
+            return Math.floor(Math.random() * 256)
+        };
+        for (var i = 0; i < numCols - 1; i++) {
+            colColors.push(`rgba(${getRand256()}, ${getRand256()}, ${getRand256()}, ${opacity})`);
+        }
+        return colColors;
+    }
+
+    function loader() {
         preventFormSubmit();
-        getCourses();
-        loadChartData();
+        getCourses(document.getElementById('course_title'));
         // test(); 
         toggleInsert();
     }
 
- 
+
 
     function test(data) {
-
         //alert(data)
     }
 

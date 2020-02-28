@@ -1,16 +1,24 @@
 <style>
-    #mychart {
-        padding-left: 5vw;
-        padding-top: 10vh;
-        /* display: none; */
+    section {
+        position: relative; 
+        height:40vh; 
+        width:40vw;
     }
     .container {
-        width: 95vw;
+        height: 95vw;
+        margin: 2em;
         display: grid;
-        grid-template-columns: .8fr 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        /* grid-template-rows: auto auto; */
     }
+    /* main {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+    } */
     div>form {
-        width: 35vw;
+        /* width: 35vw; */
+        display: grid;
+        grid-template-columns: 1fr 1fr;
     }
     table,
     th,
