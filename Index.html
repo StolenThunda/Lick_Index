@@ -18,8 +18,9 @@
             <canvas id="mychart"></canvas>
         </section>
         <section >
-            <form id="myForm" onsubmit="handleFormSubmit(this)">
+            <form name="myForm" id="myForm">
                 <div class="form-row">
+                    <div id="loader"></div>
                     <div class="form-group col">
                         <p class="h4 mb-4 text-center">Lick Entry Form</p>
                     </div>
@@ -42,7 +43,7 @@
                     <div class="form-group col">
                         <label for="lbl_lick">Lick Title</label>
                         <input type="text" class="form-control" id="lbl_lick" name="lbl_lick" placeholder="Lick Title"
-                            list="lick_names" onblur="updateChartData()">
+                            list="lick_names" /> 
                         <datalist id='lick_names'></datalist>
                     </div>
 
@@ -135,8 +136,7 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group col">
-                        <input type="button" class="btn btn-primary" onClick="doAction(this)" name='reset'
-                            value="Reset Form" />
+                        <input type="reset" class="btn btn-primary" onClick="doAction(this)" name='reset' value="Reset Form" />
                     </div>
                     <div class="form-group col">
                         <input type="button" class="btn btn-primary" onClick="doAction(this)" name='create'
@@ -155,9 +155,9 @@
             </form>
         </section>
         <section class="col">
-            <div id="loader"></div>
+            
             <p id="re"></p>
-            <div id="output"></div>
+            <!-- <div id="output"> <iframe id='ssembed' src="https://www.soundslice.com/slices/dlMNc/embed/" width="100%" height="500" frameBorder="0" allowfullscreen></iframe> </div> -->
             <div id='tip_container' class="form-row">
                 <?!=include('criteria');?>
             </div>

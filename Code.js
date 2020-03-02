@@ -16,9 +16,9 @@ function extract_form_data_(frm) {
         parseInt(frm.finger_diff) || 0,
         parseInt(frm.pick_diff) || 0,
         parseInt(frm.legato_cnt) || 0,
-        parseInt(frm.legato_cnt  || 0) / num_notes,
+        parseInt(frm.legato_cnt) || 0 / num_notes,
         parseInt(frm.bending_cnt) || 0,
-        parseInt(frm.bending_cnt  || 0) / num_notes,
+        parseInt(frm.bending_cnt) || 0 / num_notes,
         frm.has_slides == 'on',
         frm.has_vib == 'on',
         frm.has_mutes == 'on',
@@ -32,13 +32,23 @@ function extract_form_data_(frm) {
 }
 /* @Process Form */
 function processForm(frm) {
+    Logger.log(frm);
     var ws = get_sheet_by_course_title_(frm.course_title);
-    if (ws != null) return ws.appendRow(extract_form_data_(frm));
+    if (ws != null) {
+        if (!get_lick_row_(ws, frm.lbl_lick).data_range) {
+            Logger.log(frm);
+            return ws.appendRow(extract_form_data_(frm));
+        } else {
+            var v = update_lick(frm, ws);
+            Logger.log(v);
+            return v;
+        }
+    }
     Logger.log('Sheet %s: Not Found', frm.course_title)
 }
 
-function update_lick(frm) {
-    var ws = get_sheet_by_course_title_(frm.course_title);
+function update_lick(frm, ws) {
+    var ws = ws || get_sheet_by_course_title_(frm.course_title);
     var lick_row = get_lick_row_(ws, frm.lbl_lick);
     var frm_data = extract_form_data_(frm)
     Logger.log(`Frmdata: ${frm_data}`);
@@ -55,7 +65,8 @@ function get_sheet_names() {
         sn = sheets[i].getName()
         if (sn.indexOf('_data') < 0) out.push(sn)
     }
-    return out; //[out, 'course_title'];
+    Logger.log(out);
+    return out;
 }
 
 function get_licks_for_course(sheet) {
@@ -65,7 +76,7 @@ function get_licks_for_course(sheet) {
     for (var i = 2; i <= lr; i++) {
         out.push(ws.getRange(i, 1).getValue());
     }
-    // return [out, 'lick_names'];
+    Logger.log(out);
     return out;
 }
 
@@ -74,28 +85,46 @@ function update_chart(sheet, lick) {
     var newRange = get_lick_row_(ws, lick);
     var data = process_chart_data([get_header_row_(ws), newRange.data])
     var chart_data = {
-        xs : data.xs,
-        ys : data.ys,
+        xs: data.xs,
+        ys: data.ys,
         title: lick + ' Lick Landscape'
     };
     Logger.log(chart_data);
     return chart_data;
 }
 
-function process_chart_data(data){
+function process_chart_data(data) {
     // return data;
     var rem1, rem2, msgs = [];
     head = data[0];
     info = data[1];
-    idx = [4, 6, 10];  // column index on sheet
-    for (var i = idx.length-1; i >= 0; i--){
+    idx = [4, 6, 10]; // column index on sheet
+    for (var i = idx.length - 1; i >= 0; i--) {
         // Logger.log(`REMOVING (${idx[i]}): ${head[idx[i]]} == ${info[idx[i]]}`);
         rem1 = head.splice(idx[i], 1);
         rem2 = info.splice(idx[i], 1);
         msgs.push(`Removed (${idx[i]}): ${rem1} == ${rem2}`);
     }
+
+    // replace count values with density values
+    // TODO: remove hard coded idx
+    var tn_idx = head.indexOf("Total Notes");
+    var l_idx = head.indexOf("Legato Count");
+    var b_idx = head.indexOf("Bending Count");
+    var total_notes = info[tn_idx];
+    var bend_cnt = info[b_idx];
+    var leg_cnt = info[l_idx];
+
+    //  change labels
+    head[l_idx] = `${head[l_idx].split(' ')[0]} Density Pct (cnt: ${leg_cnt})`;
+    head[b_idx] = `${head[b_idx].split(' ')[0]} Density Pct (cnt: ${bend_cnt})`;
+
+    // calc and set vals
+    info[l_idx] = parseInt((leg_cnt / total_notes) * 100);
+    info[b_idx] = parseInt((bend_cnt / total_notes) * 100);
+
     // remove text fields, percentages, and checkboxes from data
-    for (var j = info.length-1; j >= 0; j--) {        
+    for (var j = info.length - 1; j >= 0; j--) {
         if (typeof info[j] !== 'number') {
             // Logger.log(`${info[j]} : ${typeof info[j]}`)
             rem1 = head.splice(j, 1);
@@ -103,18 +132,25 @@ function process_chart_data(data){
             msgs.push(`Removed (${j}): ${rem1} == ${rem2}`);
         }
     }
-    var vals = [["Attribute", "value"]];
-    for (var x = 0; x <= info.length -1; x++){
+    var vals = [
+        ["Attribute", "value"]
+    ];
+    for (var x = 0; x <= info.length - 1; x++) {
         vals.push([head[x], info[x]]);
     }
-    // Logger.log(`Removed: ${msgs}`);
+    Logger.log(`Removed: ${msgs}`);
     // return vals;
-    return {xs:head, ys:info};
+    return {
+        xs: head,
+        ys: info
+    };
 }
 
 function delete_lick(sheet, lick) {
     var ws = get_sheet_by_course_title_(sheet);
-    return ws.deleteRow(get_lick_row_(ws, lick).idx);
+    var r_idx = get_lick_row_(ws, lick).idx
+    Logger.log(`Row idx: ${r_idx}`)
+    return ws.deleteRow(r_idx);
 }
 
 function get_lick(sheet, lick) {
@@ -122,25 +158,36 @@ function get_lick(sheet, lick) {
         o[k] = vs[i];
         return o;
     }, {});
+    var final = null;
     var ws = get_sheet_by_course_title_(sheet)
-    var row = get_lick_row_(ws, lick).data;
-    var form_ctrls = [
-        'lbl_lick',
-        'finger_diff',
-        'pick_diff',
-        'legato_cnt', 'L_dense',
-        'bending_cnt', 'B_dense',
-        'has_slides',
-        'has_vib',
-        'has_mutes',
-        'boxes_used',
-        'intensity',
-        'chords', 'GEN',
-        'total_notes',
-        'speed_diff',
-        'timing_diff',
-    ];
-    var final = zip(form_ctrls, row);
+    var row = get_lick_row_(ws, lick);
+    Logger.log(row);
+    try {
+        if (row.data.length < 1) throw {
+            name: 'InvalidSearch',
+            message: `${sheet} contains no record for lick: ${lick}`
+        };
+        var form_ctrls = [
+            'lbl_lick',
+            'finger_diff',
+            'pick_diff',
+            'legato_cnt', 'L_dense',
+            'bending_cnt', 'B_dense',
+            'has_slides',
+            'has_vib',
+            'has_mutes',
+            'boxes_used',
+            'intensity',
+            'chords', 'GEN',
+            'total_notes',
+            'speed_diff',
+            'timing_diff',
+        ];
+        final = zip(form_ctrls, row.data);
+    } catch (err) {
+        return err;
+    }
+
     Logger.log(final)
     return final;
 }
@@ -155,7 +202,7 @@ function read_all_values(sheet) {
     return JSON.stringify(data);
 }
 
-function get_sheet_by_course_title_(sheet) {   
+function get_sheet_by_course_title_(sheet) {
     return get_SS_().getSheetByName(sheet);
 }
 
@@ -170,7 +217,7 @@ function get_lick_row_(ws, lick) {
         data: [],
         h_range: header,
         notation: "A:1",
-        range: null
+        data_range: null
     }
     for (var i = 1; i <= lr; i++) {
         var lick_id = ws.getRange(i, 1).getValue();

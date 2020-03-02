@@ -75,6 +75,7 @@
     }
 
     function getCourses(e) {
+        loading();
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(addListValues)
@@ -84,14 +85,19 @@
     }
 
     function getLicks(e) {
-        var licks = document.getElementById('lick_names');
-        licks.innerHTML = "";
+        loading()
+        var lick_input = document.getElementById('lbl_lick');
+        var lick_list = document.getElementById('lick_names');
         var title = e.options[e.selectedIndex].text;
-        if (title == '--') return;
+        if (lick_input.value !== "") lick_input.value = "";
+        if (title == '--') {
+            clearList(lick_list);
+            return loading();
+        }
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(addListValues)
-            .withUserObject(licks)
+            .withUserObject(lick_list)
             .get_licks_for_course(title);
     }
 
@@ -105,18 +111,24 @@
             option.text = values[i];
             el.appendChild(option);
         }
+        loading()
     }
 
     function clearList(list) {
         if (list == null) return;
-        console.info(list.nodeName);
+        // console.info(typeof list.options);
         for (i = list.options.length - 1; i >= 0; i--) {
-            if (list.options[i].text !== '--') list.remove(i);
+            if (list.options[i].text !== '--') {
+                list.options[i].remove();
+            }
         }
+        // console.info(list.options);
     }
 
     function onFailure(err) {
-        alert('There was an error!' + err.message);
+        var msg = `${err.name}  ${err.message}`;
+        alert(msg);
+        console.log(msg);
     }
 
     function onSuccess(val) {
@@ -125,18 +137,22 @@
     }
 
     function doAction(btn) {
-        var title = document.getElementById('course_title').value
-        var lick = document.getElementById('lbl_lick').value
-        var frm = $('form').serialize(); //$(btn).parent('form')[0]; 
-        console.log('Form:');
-        console.dir(frm);
+        var title = document.getElementById('course_title').value;
+        var lick = document.getElementById('lbl_lick').value;
+        var frm = document.getElementById('myForm');
+        var frm_data = $('form').serializeArray().reduce(function (a, x) {
+            a[x.name] = x.value;
+            return a;
+        }, {});
+        loading();
+        console.log(btn.name);
         switch (btn.name) {
             case 'reset':
-                if (frm) frm.trigger('reset');;
+                toggleInsert();
+                $('#mychart').hide();
                 break;
             case 'read':
                 if (title !== '--' && lick !== '') {
-                    toggleInsert('update');
                     google.script.run
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(populateForm)
@@ -160,41 +176,46 @@
                 if (confirm(`Are you sure you want to delete lick: "${lick}"`)) {
                     google.script.run
                         .withFailureHandler(onFailure)
-                        .withSuccessHandler(onSuccess)
+                        .withSuccessHandler(() => location.reload())
                         .delete_lick(title, lick);
+                    loading();
                     document.getElementById('lbl_lick').value = "";
                 }
                 case 'update':
-                    toggleInsert();
                     if (confirm(`Are you sure you want to update lick: "${lick}"`)) {
                         google.script.run
                             .withFailureHandler(onFailure)
                             .withSuccessHandler(loadChartData)
-                            .update_lick(frm);
+                            .update_lick(frm_data);
                     }
+                    loading();
                     $('#mychart').show();
                     break;
                 case 'create':
                 default:
-                    // $('#mychart').hide();
                     if (title !== '--' && lick !== '') {
                         google.script.run
                             .withFailureHandler(onFailure)
-                            .withSuccessHandler(onSuccess)
-                            .processForm(frm);
-                        frm.trigger('reset');
+                            .withSuccessHandler((data) => {
+                                if (Object.keys(data).includes('xs')) loadChartData(data);
+                                loading();
+                            })
+                            .processForm(frm_data);
+                        frm('reset');
                     }
         }
+        loading();
     }
 
     function toggleInsert(name) {
         var toggle = (name === 'update');
-        $('input[name=create]').toggle(!toggle)
-        $('input[name=update]').toggle(toggle)
-
+        $('input[name=create]').toggle(!toggle);
+        $('input[name=update]').toggle(toggle);
     }
 
     function populateForm(data) {
+        if (!data) return;
+        if (Object.keys(data).includes(['name', 'message'])) return onFailure(data);
         Object.entries(data).forEach(function (key, value) {
             value = key[1];
             key = key[0]
@@ -215,12 +236,15 @@
                 }
             }
         });
+
+        toggleInsert('update');
     }
 
     function updateChartData() {
         var title = document.getElementById('course_title').value
         var lick = document.getElementById('lbl_lick').value
         if (title !== '--' && lick !== '') {
+            loading();
             google.script.run
                 .withFailureHandler(onFailure)
                 .withSuccessHandler(loadChartData)
@@ -229,23 +253,81 @@
     }
 
     function loadChartData(chart_data) {
-        var ctx = $('#mychart'); //document.getElementById('mychart').getContext('2d');
-        var myChart = new Chart(ctx, {
+        if (!chart_data) return;
+        var ctx = document.getElementById('mychart').getContext('2d');
+        if (window.lickChart) window.lickChart.destroy(); //removeChartData();
+        window.lickChart = new Chart(ctx, genChartConfig(chart_data));
+        loading();
+    }
+
+    function removeChartData() {
+        console.dir(window.lickChart);
+        // console.log(window.lickChart.data.datasets);
+        window.lickChart.data.labels.pop();
+        window.lickChart.data.datasets.forEach((dataset) => {
+            dataset.data.pop();
+        });
+        console.dir(window.lickChart);
+        window.lickChart.update();
+    }
+
+    function genChartConfig(chart_data) {
+        return {
             type: 'bar',
+
             data: {
                 labels: chart_data.xs,
                 datasets: [{
-                    label: chart_data.title,
                     data: chart_data.ys,
-                    backgroundColor: genRGBA(chart_data.xs.length, 0.2),
-                    borderColor: genRGBA(chart_data.xs.length, 1),
-                    borderWidth: 1
                 }]
             },
-            options: {                
-                
+            options: {
+                legend: {
+                    display: false,
+                },
+                title: {
+                    display: true,
+                    text: chart_data.title,
+                    fontSize: 20,
+                    fontStyle: 'bold'
+                },
+                responsive: true,
+                scales: {
+                    xAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Attributes',
+                            fontSize: 14,
+                            fontStyle: 'bold'
+                        },
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Scale (0 - 100)',
+                            fontSize: 14,
+                            fontStyle: 'bold'
+                        },
+                        ticks: {
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                            step: 20
+                        }
+                    }]
+                },
+                elements: {
+                    rectangle: {
+                        backgroundColor: genRGBA(chart_data.xs.length, 1),
+                        borderColor: genRGBA(chart_data.xs.length, 2),
+                        borderWidth: 1
+
+                    }
+                }
+
             }
-        });
+        };
     }
 
     function genRGBA(numCols, opacity) {
@@ -259,17 +341,22 @@
         return colColors;
     }
 
-    function loader() {
-        preventFormSubmit();
-        getCourses(document.getElementById('course_title'));
-        // test(); 
-        toggleInsert();
+    function loading(show) {
+        $('#loader').toggle();
     }
 
 
 
+    function loader() {
+        preventFormSubmit();
+        getCourses(document.getElementById('course_title'));
+        test();
+        toggleInsert();
+    }
+
     function test(data) {
-        //alert(data)
+        loading();
+        // alert("load")
     }
 
     window.addEventListener('load', loader);
