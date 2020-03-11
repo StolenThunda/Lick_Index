@@ -1,25 +1,116 @@
 <style>
-    section {
-        position: relative; 
-        height:40vh; 
-        width:40vw;
+    .container.form_row {
+        justify-content: space-between;
     }
+
+    .tabcontent {
+       position: relative;
+       width:40vw;
+    }
+    #tabstrip {
+        padding: 0em;
+        width: 75%;
+    }
+
+    .tab {
+        font-family: "Montserrat";
+        font-weight: 400;
+        cursor: pointer;
+        float: left;
+        margin: 0 0.2em 0 0;
+        min-width: 3em;
+        overflow: hidden;
+        padding: 0.625em;
+        white-space: nowrap;
+        color: #ffffff;
+    }
+
+    .activeTab {
+        background-color: rgba(55, 56, 56, 0.1);
+    }
+
+    .inactiveTab {
+        background-color: rgba(7, 7, 7, 0.2)
+    }
+
+    .activePanel {
+        color: #ffffff;
+        background-color:  rgba(55, 56, 56, 0.1);
+        clear: both;
+        display: block;
+        padding: 1em;
+    }
+
+    .inactivePanel {
+        display: none;
+    }
+    #tabstrip {
+        grid-area: tabs;
+    }
+
+    #form {
+        grid-area: form;
+        width: 40vw;
+    }
+
+    #myChart {
+        grid-area: chart;
+        height: 50vh;
+    }
+
+    #ss {
+        grid-area: ss;
+    }
+    
+    #ssembed {
+        margin-bottom: -360;
+    }
+    fieldset {
+        padding: 1rem;
+        border: .2rem solid lightgrey;
+    }
+
+    .btn {
+        margin-top: .5rem;
+        width: 100%;
+        position: relative;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
     .container {
-        height: 95vw;
-        margin: 2em;
+        height: 90vh;
+        margin-left: 10% !important;
+        grid-gap: 25px;
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        /* grid-template-rows: auto auto; */
+        grid-template-areas: 'form ss ss'
+                             'form chart chart';
+        grid-template-rows: auto auto auto; 
     }
-    /* main {
+
+    .crud {
+        padding: 0px 0px 10px 0px;
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-    } */
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .crud>div {
+        padding: 5px;
+        margin: 5px;
+    }
+
     div>form {
-        /* width: 35vw; */
         display: grid;
         grid-template-columns: 1fr 1fr;
     }
+
+    .container.form_row {
+        display: grid;
+        grid-auto-columns: 1fr;
+        grid-auto-flow: column;
+    }
+
+
     table,
     th,
     td {
@@ -88,13 +179,15 @@
     #loader {
         border: 16px solid #f3f3f3;
         border-radius: 50%;
-        border-top: 16px solid blue;
-        border-bottom: 16px solid blue;
+        /* border-top: 16px solid blue;
+        border-bottom: 16px solid blue; */
+        border-top: 6px ridge rgb(170, 50, 220, .6);
+        border-bottom: 6px ridge rgb(170, 50, 220, .6);
         width: 60px;
         height: 60px;
         -webkit-animation: spin 2s linear infinite;
         animation: spin 2s linear infinite;
-        /* visibility: hidden; */
+        display: none;
     }
 
     @-webkit-keyframes spin {

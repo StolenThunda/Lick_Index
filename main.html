@@ -1,21 +1,12 @@
 <script>
+    // TODO: consolidate function logically 1 function = 1 purpose
     function output_table(data) {
-        json = JSON.parse(data)
         // CREATE DYNAMIC TABLE.
         var table = document.createElement("table");
-        var header = table.createTHead();
-        var row = header.insertRow(0);
-        var headers = Object.keys(json.records[0]);
-        var cell;
-        for (var i = 0; i < headers.length; i++) {
-            cell = row.insertCell(i);
-            cell.innerHTML = '<b>' + headers[i] + '</b>'
-        }
-
 
         // ADD JSON DATA TO THE TABLE AS ROWS.
-        for (var i = 0; i < json.records.length; i++) {
-            cur_vals = Object.values(json.records[i]);
+        for (var i = 0; i < data.records.length; i++) {
+            cur_vals = Object.values(data.records[i]);
             tr = table.insertRow(-1);
             for (var j = 0; j < cur_vals.length; j++) {
                 var tabCell = tr.insertCell(-1);
@@ -23,22 +14,36 @@
             }
         }
 
+        var header = table.createTHead();
+        var row = header.insertRow(0);
+        var headers = Object.keys(data.records[0]);
+        var cell;
+        for (var i = 0; i < headers.length; i++) {
+            cell = row.insertCell(i);
+            cell.innerHTML = '<b>' + headers[i] + '</b>'
+        }
 
         // FINALLY ADD THE NEWLY CREATED TABLE WITH JSON DATA TO A CONTAINER.
-        var divContainer = document.getElementById("output");
-        divContainer.innerHTML = "";
-        divContainer.appendChild(table);
+        var btn = document.createElement("BUTTON");
+        btn.className = 'btn btn-primary';
+        btn.innerHTML = "Clear";
+        btn.onclick = () => {
+            var divContainer = document.getElementById("output");
+            divContainer.innerHTML = " ";
+        };
+        document.getElementById("output").appendChild(btn);
+        document.getElementById("output").appendChild(table);
     }
 
     function createDefaultTooltips() {
         var defaults = {
             title: `Course Title 
-                              The sheet names in the attached Spreadsheet`,
+                        The sheet names in the attached Spreadsheet`,
             lick: `Lick Name
-                             Short Name of the lick 
-                             (eg. Solo 1 Lick 7, S1L7,
-                             Chorus 3 Lick 5, C3L5,
-                             Lesson 1 Pattern 3, L1P3)`
+                        Short Name of the lick 
+                        (eg. Solo 1 Lick 7, S1L7,
+                        Chorus 3 Lick 5, C3L5,
+                        Lesson 1 Pattern 3, L1P3)`
 
         };
         var course_title = document.createElement("PRE");
@@ -75,7 +80,7 @@
     }
 
     function getCourses(e) {
-        loading();
+        loading("Loading Courses");
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(addListValues)
@@ -85,50 +90,52 @@
     }
 
     function getLicks(e) {
-        loading()
-        var lick_input = document.getElementById('lbl_lick');
+        loading("Loading Licks")
         var lick_list = document.getElementById('lick_names');
-        var title = e.options[e.selectedIndex].text;
-        if (lick_input.value !== "") lick_input.value = "";
+        var idx = e.selectedIndex;
+        var title = e.options[idx].text;
+        $('input[type=reset]').click();
+        e.selectedIndex = idx;
         if (title == '--') {
             clearList(lick_list);
-            return loading();
+            loading("Done");
+            return;
         }
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(addListValues)
             .withUserObject(lick_list)
-            .get_licks_for_course(title);
+            .get_licks_names(title);  
+            
+        loadMetaData(e);
     }
 
     function addListValues(values, el) {
         clearList(el);
         if (typeof values === 'undefined') return;
         for (var i = 0; i < values.length; i++) {
-            if (values[i] === "") continue;
+            if (values[i] === "" || values[i] == "Courses") continue;
             var option = document.createElement("OPTION");
             option.value = values[i];
             option.text = values[i];
             el.appendChild(option);
         }
-        loading()
+        loading("Done");
     }
 
     function clearList(list) {
         if (list == null) return;
-        // console.info(typeof list.options);
         for (i = list.options.length - 1; i >= 0; i--) {
             if (list.options[i].text !== '--') {
                 list.options[i].remove();
             }
         }
-        // console.info(list.options);
     }
 
     function onFailure(err) {
         var msg = `${err.name}  ${err.message}`;
         alert(msg);
-        console.log(msg);
+        test(msg);
     }
 
     function onSuccess(val) {
@@ -140,27 +147,33 @@
         var title = document.getElementById('course_title').value;
         var lick = document.getElementById('lbl_lick').value;
         var frm = document.getElementById('myForm');
-        var frm_data = $('form').serializeArray().reduce(function (a, x) {
+        var f = $('form').serializeArray();
+        test(f);
+        var frm_data = f.reduce(function (a, x) {
             a[x.name] = x.value;
             return a;
         }, {});
-        loading();
-        console.log(btn.name);
+        loading(btn.name.toUpperCase());
         switch (btn.name) {
             case 'reset':
                 toggleInsert();
                 $('#mychart').hide();
                 break;
+            case 'prev':
+            case 'next':
             case 'read':
                 if (title !== '--' && lick !== '') {
+                    sibling = (btn.name === 'read') ? null : btn.name;
                     google.script.run
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(populateForm)
-                        .get_lick(title, lick);
-                    updateChartData();
+                        .get_lick(title, lick, sibling);
+                    updateChartData(title, lick, sibling);
+                    loadMetaData();
                     break;
                 }
                 alert('Title and Lick required for this search')
+                loading("Done");
                 break;
             case 'dump':
                 if (title !== '--') {
@@ -168,6 +181,7 @@
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(output_table)
                         .read_all_values(title);
+                    loading("Done");
                     break;
                 }
                 alert('Choose A course')
@@ -176,35 +190,47 @@
                 if (confirm(`Are you sure you want to delete lick: "${lick}"`)) {
                     google.script.run
                         .withFailureHandler(onFailure)
-                        .withSuccessHandler(() => location.reload())
+                        .withSuccessHandler(() => {
+                            onSuccess();
+                            loading("Done");
+                            $('input[type=reset]').click();
+                        })
                         .delete_lick(title, lick);
-                    loading();
                     document.getElementById('lbl_lick').value = "";
                 }
                 case 'update':
                     if (confirm(`Are you sure you want to update lick: "${lick}"`)) {
                         google.script.run
                             .withFailureHandler(onFailure)
-                            .withSuccessHandler(loadChartData)
+                            .withSuccessHandler((data) => {
+                                if (Object.keys(data).includes('xs')) loadChartData(data);
+                                onSuccess();
+                            })
                             .update_lick(frm_data);
                     }
-                    loading();
-                    $('#mychart').show();
                     break;
                 case 'create':
                 default:
                     if (title !== '--' && lick !== '') {
+                        // check for dupes
+                        if (currentDList().indexOf(lick) >= 0) {
+                            alert(`Lick ${lick} is already assigned!!!`);
+                            $('input[name=update]').click();
+                            return;
+                        }
                         google.script.run
                             .withFailureHandler(onFailure)
                             .withSuccessHandler((data) => {
                                 if (Object.keys(data).includes('xs')) loadChartData(data);
-                                loading();
+                                onSuccess();
                             })
                             .processForm(frm_data);
-                        frm('reset');
+                        $('input[type=reset]').click();
+                    } else {
+                        alert('At least, Title and Lick required for saving!!!');
                     }
         }
-        loading();
+        loading("Done");
     }
 
     function toggleInsert(name) {
@@ -221,7 +247,7 @@
             key = key[0]
             if (key !== '') {
                 var ctrl = $('#' + key);
-                // alert(`${ctrl.prop('id')} (${ctrl.prop('type')}): ${value}`);
+                // if (key.indexOf('loop') >= 0) test(`${ctrl.prop('id')} (${ctrl.prop('type')}): ${value}`);
                 switch (ctrl.prop("type")) {
                     case "radio":
                     case "checkbox":
@@ -236,45 +262,63 @@
                 }
             }
         });
-
         toggleInsert('update');
     }
 
-    function updateChartData() {
-        var title = document.getElementById('course_title').value
-        var lick = document.getElementById('lbl_lick').value
+    function updateSSPlayer() {
+        window.loop = {
+            start: document.getElementById('loop_start').value,
+            end: document.getElementById('loop_end').value
+        }
+        window.loop.ms_duration = Math.round((window.loop.end - window.loop.start) * 1000);
+        test(window.loop)
+        var ssiframe = document.getElementById('ssembed').contentWindow;
+        ssiframe
+            .postMessage('{"method": "setNotationVisibility", "arg": true}', 'https://www.soundslice.com');
+       
+       loading('Done')
+    }
+
+    function loadMetaData(e) {
+        e = (typeof e === "undefined") ? document.getElementById('course_title') : e;
+        let idx = e.selectedIndex
+        var title = e.options[idx].text;
+        loading("Meta Data");
+        google.script.run
+            .withFailureHandler(onFailure)
+            .withSuccessHandler(data => {
+                const url = 'https://www.soundslice.com/slices/' + data.ss_code + '/embed/?api=1';
+                document.getElementById('ssembed').src = url;
+                test(data);
+                updateSSPlayer();
+            })
+            .get_course_meta(title);        
+    }
+
+    function updateChartData(title, lick, action) {
         if (title !== '--' && lick !== '') {
-            loading();
             google.script.run
                 .withFailureHandler(onFailure)
                 .withSuccessHandler(loadChartData)
-                .update_chart(title, lick);
+                .update_chart(title, lick, action);
         }
     }
 
     function loadChartData(chart_data) {
         if (!chart_data) return;
+        test(chart_data);
         var ctx = document.getElementById('mychart').getContext('2d');
-        if (window.lickChart) window.lickChart.destroy(); //removeChartData();
+        if (window.lickChart) window.lickChart.destroy();
         window.lickChart = new Chart(ctx, genChartConfig(chart_data));
-        loading();
-    }
-
-    function removeChartData() {
-        console.dir(window.lickChart);
-        // console.log(window.lickChart.data.datasets);
-        window.lickChart.data.labels.pop();
-        window.lickChart.data.datasets.forEach((dataset) => {
-            dataset.data.pop();
-        });
-        console.dir(window.lickChart);
-        window.lickChart.update();
+        // loadMetaData();
+        loading("Done");
     }
 
     function genChartConfig(chart_data) {
+        $('#tabstrip').show();
+        $('#mychart').show();
         return {
             type: 'bar',
-
             data: {
                 labels: chart_data.xs,
                 datasets: [{
@@ -341,11 +385,11 @@
         return colColors;
     }
 
-    function loading(show) {
-        $('#loader').toggle();
+    function loading(msg) {
+        $('#loader')
+            .toggle(msg.toLowerCase() !== "done")
+            .html(msg || "");
     }
-
-
 
     function loader() {
         preventFormSubmit();
@@ -354,10 +398,91 @@
         toggleInsert();
     }
 
-    function test(data) {
-        loading();
-        // alert("load")
+    function currentDList() {
+        const opts = document.getElementById('lick_names').options;
+        let arrData = [...opts];
+        return arrData.map(a => a.value);
     }
 
+    function test(data) {
+        if (!data) return;
+        console.trace(data)
+        // console.dir(data)
+    }
+
+
     window.addEventListener('load', loader);
+
+    // Handle inbound current time messages.
+    window.addEventListener('message', function (event) {
+        const cmd = JSON.parse(event.data);
+        const ssiframe = document.getElementById('ssembed').contentWindow;
+        switch (cmd.method) {
+            case 'ssPlayerReady':
+                test('Player is ready.');
+                break;
+            case 'ssPlay':
+                test('Play has started.');
+                test(`Playing for: ${window.loop.ms_duration} seconds`);
+                setTimeout(() => {
+                    ssiframe.postMessage('{"method": "pause"}', 'https://www.soundslice.com');
+                }, window.loop.ms_duration);
+                break;
+            case 'ssPause':
+                test('Play has stopped.');
+                break;
+            case 'ssAudioEnd':
+                test('Play has stopped due to reaching the end.');
+                break;
+            case 'ssSeek':
+                test('Play has seeked to ' + cmd.arg + ' seconds.');                
+                ssiframe.postMessage('{"method": "play"}', 'https://www.soundslice.com');                
+                break;
+            case 'ssCurrentTime':
+                test('Current time is ' + cmd.arg + ' seconds.');
+                break;
+            case 'ssDuration':
+                test('Duration is ' + cmd.arg + ' seconds.');
+                break;
+            case 'ssCurrentBar':
+                test('Current bar is ' + cmd.arg);
+                break;
+            case 'ssBarCount':
+                test('Bar count is ' + cmd.arg);
+                break;
+            case 'ssAudioLoaded':
+                test('Recording ' + cmd.arg + ' has loaded.');
+                if ( "undefined" === typeof window.loop) return;
+                ssiframe.postMessage(`{"method": "seek", "arg" : ${window.loop.start}}`, 'https://www.soundslice.com');
+                break;
+            case 'ssAudioSourceChanged':
+                test('Recording changed to ' + cmd.arg);
+                break;
+            case 'ssSpeed':
+                test('Speed is ' + (cmd.arg * 100) + ' percent.');
+                break;
+            case 'ssVolume':
+                test('Volume is ' + (cmd.arg * 100) + ' percent.');
+                break;
+            case 'ssToggleSettings':
+                if (cmd.arg === 1) {
+                    test('Settings were toggled on.');
+                } else if (cmd.arg === 0) {
+                    test('Settings were toggled off.');
+                }
+                break;
+            case 'ssPrint':
+                test('User clicked Print');
+                break;
+            case 'ssZoom':
+                test('Zoom is now ' + cmd.arg);
+                break;
+            case 'ssNotationVisibility':
+                test('Notation visibility is now ' + cmd.arg);
+                break;
+            case 'ssFullscreenSupport':
+                test('Does this browser support full screen? ' + cmd.arg);
+                break;
+        }
+    });
 </script>
