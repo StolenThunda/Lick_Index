@@ -28,7 +28,7 @@
                 <div class="form-row" style="justify-content: space-between;">
                     <div class="form-group">
                         <label for="course_title">Course</label>
-                    <select onchange="getLicks(this)" class="form-control" name="course_title" id="course_title"
+                        <select onchange="initPage(this)" class="form-control" name="course_title" id="course_title"
                             value="Course">
                             <option>--</option>
                         </select>
@@ -57,27 +57,29 @@
 
                     <fieldset>
                         <legend>General</legend>
-                        <div class="form-group">
-                            <label for="total_notes">Total Notes</label>
-                            <input type="number" min="1" max="100" class="form-control" id="total_notes"
-                                name="total_notes" value=1>
-                        </div>
-                        <div> <label for="timing_diff">Timing Difficulty</label>
-                            <input type="number" min="0" max="100" step="5" class="form-control" id="timing_diff"
-                                name="timing_diff" value=0>
-                        </div>
-                        <div>
-                            <label for="speed_diff">Speed Difficulty</label>
-                            <input type="number" min="0" max="100" step="5" class="form-control" id="speed_diff"
-                                name="speed_diff" value=0>
-                        </div>
 
+                        <div class="form-row">
+                            <div class="form-group col">
+                                <label for="total_notes">Total Notes</label>
+                                <input type="number" min="1" max="100" class="form-control" id="total_notes"
+                                    name="total_notes" value=1>
+                            </div>
+                            <div class="form-group col"> <label for="timing_diff">Timing Difficulty</label>
+                                <input type="number" min="0" max="100" step="5" class="form-control" id="timing_diff"
+                                    name="timing_diff" value=0>
+                            </div>
+                            <div class="form-group col">
+                                <label for="speed_diff">Speed Difficulty</label>
+                                <input type="number" min="0" max="100" step="5" class="form-control" id="speed_diff"
+                                    name="speed_diff" value=0>
+                            </div>
+                        </div>
                     </fieldset>
                     <fieldset>
                         <legend>Technique</legend>
                         <div class="form-row">
 
-                            <div> <label for="pick_diff">Picking Difficulty</label>
+                            <div class="form-group col"> <label for="pick_diff">Picking Difficulty</label>
                                 <input type="number" min="0" max="100" step="5" class="form-control" id="pick_diff"
                                     name="pick_diff" value=0>
                             </div>
@@ -94,7 +96,7 @@
                                     name="bending_cnt" value=0>
                             </div>
                             <div class="form-group col ">
-                                <label for="legato_cnt">Legato Count (Hammer-ons, Pull-Offs)</label>
+                                <label for="legato_cnt">Legato Count</label>
                                 <input type="number" min="0" max="100" class="form-control" id="legato_cnt"
                                     name="legato_cnt" value=0>
                             </div>
@@ -116,22 +118,23 @@
                     </fieldset>
                     <fieldset>
                         <legend>Meta</legend>
-                        <div class="form-group col">
-                            <input type="hidden" id="loop_start" name="loop_start" disabled>
-                            <input type="hidden" id="loop_end" name="loop_end" disabled>
-                            <label for="boxes_used">Boxes Used</label><br />
-                            <input type="number" min="1" max="5" id="boxes_used" value="1" name="boxes_used">
-                        </div>
-                        <div class="form-group col">
-                            <label for="intensity">Intensity</label>
-                            <input type="number" min="0" max="100" step="10" class="form-control" id="intensity"
+                        <div class="form-row">
+                            <div class="form-group col">
+                                <label for="boxes_used">Boxes Used</label><br />
+                                <input type="number" min="1" max="5" class="form-control"  id="boxes_used" value="1" name="boxes_used">
+                            </div>
+                            <div class="form-group col">
+                                <label for="intensity">Intensity</label>
+                                <input type="number" min="0" max="100" class="form-control"  step="10" class="form-control" id="intensity"
                                 name="intensity" value=0>
+                            </div>
+                            <div class="form-group col">
+                                <label for="chords">Chords</label><br />
+                                <input type="text" id="chords"  class="form-control" name="chords" placeholder="">
+                                <input type="hidden" id="loop_start" name="loop_start" disabled>
+                                <input type="hidden" id="loop_end" name="loop_end" disabled>
+                            </div>
                         </div>
-                        <div class="form-group col">
-                            <label for="chords">Chords</label><br />
-                            <input type="text" id="chords" name="chords" placeholder="">
-                        </div>
-
                     </fieldset>
                 </fieldset>
                 <div class="form-row crud">
@@ -155,7 +158,7 @@
             </form>
         </section>
         <section id="ss" class='tabcontent'>
-            <iframe id='ssembed' src="" width="100%" height="550px" frameBorder="0" allowfullscreen></iframe>
+            <iframe id='ssembed' src="" width="100%" height="650px" frameBorder="0" allowfullscreen></iframe>
         </section>
         <section id='myChart' class="tabcontent">
             <canvas id="mychart"></canvas>

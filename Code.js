@@ -62,7 +62,7 @@ function update_lick(frm, ws) {
   const frm_data = extract_form_data_(frm);
   Logger.log(frm_data);
   lick_row.data_range.setValues([frm_data]);
-  return update_chart(frm.course_title, frm.lbl_lick);
+  return update_chart(frm.course_title, lick_row.lick);
 }
 
 function get_sheet_names() {
@@ -95,14 +95,24 @@ function process_chart_data(data) {
   // replace count values with density values
   // TODO: remove hard coded idx
   const total_notes = info[head.indexOf('Total Notes')];
-  const bnd_cnt = info[head.indexOf('Bending Count')];
-  const leg_cnt = info[head.indexOf('Legato Count')];
+  const bnd_idx = head.indexOf('Bending Count');
+  const leg_idx = head.indexOf('Legato Count')
+  const bnd_cnt = info[bnd_idx];
+  const leg_cnt = info[bnd_idx];
   const vals = [
     ['Attribute', 'value'],
   ];
   Logger.log(head);
   Logger.log(info);
   idx = [4, 6, 10, 17, 18]; // column index on sheet
+  //  change labels
+  head[leg_idx] = `${head[leg_idx].split(' ')[0]} Density %(cnt: ${leg_cnt})`;
+  head[bnd_idx] = `${head[bnd_idx].split(' ')[0]} Density %(cnt: ${bnd_cnt})`;
+
+  // calc and set vals
+  info[leg_idx] = parseInt((leg_cnt / total_notes) * 100);
+  info[bnd_idx] = parseInt((bnd_cnt / total_notes) * 100);
+
 
   for (let i = idx.length - 1; i >= 0; i--) {
     Logger.log(`REMOVING (${idx[i]}): ${head[idx[i]]} == ${info[idx[i]]}`);
@@ -120,14 +130,6 @@ function process_chart_data(data) {
       msgs.push(`Removed (${j}): ${rem1} == ${rem2}`);
     }
   }
-
-  //  change labels
-  head[leg_cnt] = `${head[leg_cnt].split(' ')[0]} Density %(cnt: ${leg_cnt})`;
-  head[bnd_cnt] = `${head[bnd_cnt].split(' ')[0]} Density %(cnt: ${bnd_cnt})`;
-
-  // calc and set vals
-  info[leg_cnt] = parseInt((leg_cnt / total_notes) * 100);
-  info[bnd_cnt] = parseInt((bnd_cnt / total_notes) * 100);
 
 
   for (let x = 0; x <= info.length - 1; x++) {
@@ -251,6 +253,7 @@ function get_course_meta(course) {
 function get_simple_header(sh) {
   return get_header_row_(sh).map( (x) => x.toLowerCase().replace(' ', '_'));
 }
+
 /**
  * Get a row of lick information
  * @param {WORKSHEET} ws Current worksheet obj

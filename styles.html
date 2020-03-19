@@ -5,57 +5,16 @@
 
     .tabcontent {
        position: relative;
-       width:40vw;
-    }
-    #tabstrip {
-        padding: 0em;
-        width: 75%;
-    }
-
-    .tab {
-        font-family: "Montserrat";
-        font-weight: 400;
-        cursor: pointer;
-        float: left;
-        margin: 0 0.2em 0 0;
-        min-width: 3em;
-        overflow: hidden;
-        padding: 0.625em;
-        white-space: nowrap;
-        color: #ffffff;
-    }
-
-    .activeTab {
-        background-color: rgba(55, 56, 56, 0.1);
-    }
-
-    .inactiveTab {
-        background-color: rgba(7, 7, 7, 0.2)
-    }
-
-    .activePanel {
-        color: #ffffff;
-        background-color:  rgba(55, 56, 56, 0.1);
-        clear: both;
-        display: block;
-        padding: 1em;
-    }
-
-    .inactivePanel {
-        display: none;
-    }
-    #tabstrip {
-        grid-area: tabs;
+       width:57vw;
     }
 
     #form {
         grid-area: form;
-        width: 40vw;
+        width: 35vw;
     }
 
     #myChart {
         grid-area: chart;
-        height: 50vh;
     }
 
     #ss {
@@ -67,7 +26,6 @@
     }
     fieldset {
         padding: 1rem;
-        border: .2rem solid lightgrey;
     }
 
     .btn {
@@ -79,9 +37,8 @@
     }
 
     .container {
-        height: 90vh;
-        margin-left: 10% !important;
-        grid-gap: 25px;
+        margin-left: 5% !important;
+        grid-gap: 5px;
         display: grid;
         grid-template-areas: 'form ss ss'
                              'form chart chart';

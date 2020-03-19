@@ -1,4 +1,7 @@
 <script>
+    let SSIFRAME;
+    let CURR_EMB_CODE;
+
     // TODO: consolidate function logically 1 function = 1 purpose
     function output_table(data) {
         // CREATE DYNAMIC TABLE.
@@ -99,15 +102,21 @@
         if (title == '--') {
             clearList(lick_list);
             loading("Done");
-            return;
+            return false;
         }
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(addListValues)
             .withUserObject(lick_list)
-            .get_licks_names(title);  
-            
+            .get_licks_names(title);
+
+        return true;
+    }
+
+    function initPage(e) {
+        if (!getLicks(e)) return;
         loadMetaData(e);
+        SSIFRAME.postMessage('{"method": "clearLoop"}', 'https://www.soundslice.com');
     }
 
     function addListValues(values, el) {
@@ -135,7 +144,7 @@
     function onFailure(err) {
         var msg = `${err.name}  ${err.message}`;
         alert(msg);
-        test(msg);
+        log(msg);
     }
 
     function onSuccess(val) {
@@ -148,7 +157,6 @@
         var lick = document.getElementById('lbl_lick').value;
         var frm = document.getElementById('myForm');
         var f = $('form').serializeArray();
-        test(f);
         var frm_data = f.reduce(function (a, x) {
             a[x.name] = x.value;
             return a;
@@ -157,6 +165,7 @@
         switch (btn.name) {
             case 'reset':
                 toggleInsert();
+                document.getElementById('ssembed').src = "";
                 $('#mychart').hide();
                 break;
             case 'prev':
@@ -203,8 +212,9 @@
                         google.script.run
                             .withFailureHandler(onFailure)
                             .withSuccessHandler((data) => {
+                                onSuccess(Object.keys(data).includes('xs'));
                                 if (Object.keys(data).includes('xs')) loadChartData(data);
-                                onSuccess();
+
                             })
                             .update_lick(frm_data);
                     }
@@ -222,7 +232,7 @@
                             .withFailureHandler(onFailure)
                             .withSuccessHandler((data) => {
                                 if (Object.keys(data).includes('xs')) loadChartData(data);
-                                onSuccess();
+                                onSuccess(data);
                             })
                             .processForm(frm_data);
                         $('input[type=reset]').click();
@@ -247,7 +257,7 @@
             key = key[0]
             if (key !== '') {
                 var ctrl = $('#' + key);
-                // if (key.indexOf('loop') >= 0) test(`${ctrl.prop('id')} (${ctrl.prop('type')}): ${value}`);
+                // if (key.indexOf('loop') >= 0) log(`${ctrl.prop('id')} (${ctrl.prop('type')}): ${value}`);
                 switch (ctrl.prop("type")) {
                     case "radio":
                     case "checkbox":
@@ -265,18 +275,17 @@
         toggleInsert('update');
     }
 
-    function updateSSPlayer() {
+    function genLoopObj() {
         window.loop = {
             start: document.getElementById('loop_start').value,
             end: document.getElementById('loop_end').value
         }
         window.loop.ms_duration = Math.round((window.loop.end - window.loop.start) * 1000);
-        test(window.loop)
-        var ssiframe = document.getElementById('ssembed').contentWindow;
-        ssiframe
-            .postMessage('{"method": "setNotationVisibility", "arg": true}', 'https://www.soundslice.com');
-       
-       loading('Done')
+        if (SSIFRAME) {
+            SSIFRAME.postMessage(`{"method":"setLoop", "arg" : [${window.loop.start}, ${window.loop.end}]}`,
+                'https://www.soundslice.com');
+        }
+        loading('Done')
     }
 
     function loadMetaData(e) {
@@ -287,12 +296,16 @@
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(data => {
-                const url = 'https://www.soundslice.com/slices/' + data.ss_code + '/embed/?api=1';
-                document.getElementById('ssembed').src = url;
-                test(data);
-                updateSSPlayer();
+                log(data);
+                if (CURR_EMB_CODE !== data.ss_code) {
+                    const url = 'https://www.soundslice.com/slices/' + data.ss_code +
+                        '/embed/?force_top_video=1&recording_idx=2&scroll_type=1&api=1';
+                    document.getElementById('ssembed').src = url;
+                    CURR_EMB_CODE = data.ss_code;
+                }
+                genLoopObj();
             })
-            .get_course_meta(title);        
+            .get_course_meta(title);
     }
 
     function updateChartData(title, lick, action) {
@@ -306,7 +319,7 @@
 
     function loadChartData(chart_data) {
         if (!chart_data) return;
-        test(chart_data);
+        log(chart_data);
         var ctx = document.getElementById('mychart').getContext('2d');
         if (window.lickChart) window.lickChart.destroy();
         window.lickChart = new Chart(ctx, genChartConfig(chart_data));
@@ -394,8 +407,9 @@
     function loader() {
         preventFormSubmit();
         getCourses(document.getElementById('course_title'));
-        test();
+        log();
         toggleInsert();
+        SSIFRAME = document.getElementById('ssembed').contentWindow;
     }
 
     function currentDList() {
@@ -404,10 +418,11 @@
         return arrData.map(a => a.value);
     }
 
-    function test(data) {
+    function log(data, bTrace, bString) {
         if (!data) return;
-        console.trace(data)
-        // console.dir(data)
+        if (bTrace) console.trace(data)
+        if (bString) console.dir(JSON.stringify(data, null, 2));
+        console.dir(data);
     }
 
 
@@ -416,73 +431,71 @@
     // Handle inbound current time messages.
     window.addEventListener('message', function (event) {
         const cmd = JSON.parse(event.data);
-        const ssiframe = document.getElementById('ssembed').contentWindow;
+        // log(event, true, true);
         switch (cmd.method) {
-            case 'ssPlayerReady':
-                test('Player is ready.');
-                break;
-            case 'ssPlay':
-                test('Play has started.');
-                test(`Playing for: ${window.loop.ms_duration} seconds`);
-                setTimeout(() => {
-                    ssiframe.postMessage('{"method": "pause"}', 'https://www.soundslice.com');
-                }, window.loop.ms_duration);
-                break;
+            // case 'ssPlayerReady':
+            //     log('Player is ready.');
+            //     break;
+            // case 'ssPlay':
+            //     log('Play has started.');
+            //     break;
             case 'ssPause':
-                test('Play has stopped.');
+                // log('Play has stopped.');
+                SSIFRAME.postMessage('{"method": "getCurrentTime"}', 'https://www.soundslice.com');
                 break;
-            case 'ssAudioEnd':
-                test('Play has stopped due to reaching the end.');
-                break;
-            case 'ssSeek':
-                test('Play has seeked to ' + cmd.arg + ' seconds.');                
-                ssiframe.postMessage('{"method": "play"}', 'https://www.soundslice.com');                
-                break;
+            // case 'ssAudioEnd':
+            //     log('Play has stopped due to reaching the end.');
+            //     break;
+            // case 'ssSeek':
+            //     log('Play has seeked to ' + cmd.arg + ' seconds.');
+            //     break;
             case 'ssCurrentTime':
-                test('Current time is ' + cmd.arg + ' seconds.');
+                log('Current time is ' + cmd.arg + ' seconds.');
                 break;
-            case 'ssDuration':
-                test('Duration is ' + cmd.arg + ' seconds.');
-                break;
-            case 'ssCurrentBar':
-                test('Current bar is ' + cmd.arg);
-                break;
-            case 'ssBarCount':
-                test('Bar count is ' + cmd.arg);
-                break;
-            case 'ssAudioLoaded':
-                test('Recording ' + cmd.arg + ' has loaded.');
-                if ( "undefined" === typeof window.loop) return;
-                ssiframe.postMessage(`{"method": "seek", "arg" : ${window.loop.start}}`, 'https://www.soundslice.com');
-                break;
-            case 'ssAudioSourceChanged':
-                test('Recording changed to ' + cmd.arg);
-                break;
-            case 'ssSpeed':
-                test('Speed is ' + (cmd.arg * 100) + ' percent.');
-                break;
-            case 'ssVolume':
-                test('Volume is ' + (cmd.arg * 100) + ' percent.');
-                break;
-            case 'ssToggleSettings':
-                if (cmd.arg === 1) {
-                    test('Settings were toggled on.');
-                } else if (cmd.arg === 0) {
-                    test('Settings were toggled off.');
-                }
-                break;
-            case 'ssPrint':
-                test('User clicked Print');
-                break;
-            case 'ssZoom':
-                test('Zoom is now ' + cmd.arg);
-                break;
-            case 'ssNotationVisibility':
-                test('Notation visibility is now ' + cmd.arg);
-                break;
-            case 'ssFullscreenSupport':
-                test('Does this browser support full screen? ' + cmd.arg);
-                break;
+            // case 'ssDuration':
+            //     log('Duration is ' + cmd.arg + ' seconds.');
+            //     break;
+            // case 'ssCurrentBar':
+            //     log('Current bar is ' + cmd.arg, true, true);
+            //     break;
+            // case 'ssBarCount':
+            //     log('Bar count is ' + cmd.arg);
+            //     break;
+            // case 'ssAudioLoaded':
+            //     log('Recording ' + cmd.arg + ' has loaded.');
+            //     break;
+            // case 'ssAudioSourceChanged':
+            //     log('Recording changed to ' + cmd.arg);
+            //     break;
+            // case 'ssSpeed':
+            //     log('Speed is ' + (cmd.arg * 100) + ' percent.');
+            //     break;
+            // case 'ssVolume':
+            //     log('Volume is ' + (cmd.arg * 100) + ' percent.');
+            //     break;
+            // case 'ssToggleSettings':
+            //     if (cmd.arg === 1) {
+            //         log('Settings were toggled on.');
+            //     } else if (cmd.arg === 0) {
+            //         log('Settings were toggled off.');
+            //     }
+            //     break;
+            // case 'ssPrint':
+            //     log('User clicked Print');
+            //     break;
+            // case 'ssZoom':
+            //     log('Zoom is now ' + cmd.arg);
+            //     break;
+            // case 'ssNotationVisibility':
+            //     log('Notation visibility is now ' + cmd.arg);
+
+            //     break;
+            // case 'ssFullscreenSupport':
+            //     log('Does this browser support full screen? ' + cmd.arg);
+            //     break;
+            case 'ssLoopChange':
+                // log('Loop Changed:' + cmd.arg);
+                SSIFRAME.postMessage('{"method": "play"}', 'https://www.soundslice.com');
         }
     });
 </script>
