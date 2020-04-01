@@ -1,4 +1,4 @@
-<script> 
+<script>
     "use strict"
     let SSIFRAME;
     let CURR_EMB_CODE;
@@ -179,7 +179,8 @@
     }
 
     function doAction(btn) {
-        if (!b_preValidation()) return alert2({
+        if (!b_preValidation() &&
+            !['prev', 'read', 'next'].includes(btn.name)) return alert2({
             icon: 'error',
             title: 'Error',
             text: 'Invalid Form'
@@ -195,7 +196,7 @@
         }, {});
         switch (btn.name) {
             case 'reset':
-                toggleInsert();
+                enableSave();
                 document.getElementById('ssembed').src = "";
                 $('#mychart').hide();
                 break;
@@ -212,11 +213,7 @@
                     loadMetaData();
                     break;
                 }
-                alert2({
-                    text: 'Title and Lick required for this search',
-                    icon: 'info'
-                })
-                loading("Done");
+                notifyInsufficientForm('search');
                 break;
             case 'dump':
                 if (title !== '--') {
@@ -233,51 +230,58 @@
                 })
                 break;
             case 'delete':
-                alert2({
-                    showCancelButton: true,
-                    text: `Are you sure you want to delete lick: "${lick}"`,
-                    icon: 'question',
-                    confirmButtonText: 'Confirm'
-                }).then((result) => {
-                    if (result.value) {
-                        google.script.run
-                            .withFailureHandler(onFailure)
-                            .withSuccessHandler(() => {
-                                onSuccess();
-                                loading("Done");
-                                $('input[type=reset]').click();
-                            })
-                            .delete_lick(title, lick);
-                        document.getElementBy
-                    }
-                    Id('lbl_lick').value = "";
-                });
+                if (title !== '--' && lick !== '') {
+                    alert2({
+                        showCancelButton: true,
+                        text: `Are you sure you want to delete lick: "${lick}"`,
+                        icon: 'question',
+                        confirmButtonText: 'Confirm'
+                    }).then((result) => {
+                        if (result.value) {
+                            google.script.run
+                                .withFailureHandler(onFailure)
+                                .withSuccessHandler(() => {
+                                    onSuccess();
+                                    loading("Done");
+                                    $('input[type=reset]').click();
+                                })
+                                .delete_lick(title, lick);
+                            document.getElementBy
+                        }
+                        Id('lbl_lick').value = "";
+                    });
+                }else {
+                    notifyInsufficientForm('update');
+                } 
                 break;
             case 'update':
-                alert2({
-                    showCancelButton: true,
-                    text: `Are you sure you want to update lick: "${lick}"`,
-                    icon: 'question',
-                    confirmButtonText: 'Confirm'
-                }).then((result) => {
-                    log(result)
-                    if (result.value) {
-                        google.script.run
-                            .withFailureHandler(onFailure)
-                            .withSuccessHandler((data) => {
-                                let status = (data !== null);
-                                if (status)
-                                    if (Object.keys(data).includes('ys')) {
-                                        onSuccess(true);
-                                        loadChartData(data);
-                                    }
-                                $('input[name=read]').click();
-                            })
-                            .update_lick(frm_data);
+                if (title !== '--' && lick !== '') {
+                    alert2({
+                        showCancelButton: true,
+                        text: `Are you sure you want to update lick: "${lick}"`,
+                        icon: 'question',
+                        confirmButtonText: 'Confirm'
+                    }).then((result) => {
+                        log(result)
+                        if (result.value) {
+                            google.script.run
+                                .withFailureHandler(onFailure)
+                                .withSuccessHandler((data) => {
+                                    let status = (data !== null);
+                                    if (status)
+                                        if (Object.keys(data).includes('ys')) {
+                                            onSuccess(true);
+                                            loadChartData(data);
+                                        }
+                                    $('input[name=read]').click();
+                                })
+                                .update_lick(frm_data);
 
-                    }
-                })
-
+                        }
+                    });
+                } else {
+                    notifyInsufficientForm('update');
+                }
                 break;
             case 'create':
             default:
@@ -301,19 +305,38 @@
                         .processForm(frm_data);
                     $('input[type=reset]').click();
                 } else {
-                    alert2({
-                        text: 'At least, Title and Lick required for saving!!!',
-                        icon: 'info'
-                    });
+                    notifyInsufficientForm('saving');
                 }
         }
         loading("Done");
     }
 
+    function notifyInsufficientForm(action)
+    {
+        action = action || 'this action';
+        const msg = `Course title and Lick required for ${action}`;
+        console.log(msg);
+        alert2({
+            text: msg,
+            icon: 'error'
+        })
+        loading("Done");
+    }
+
+    function enableSave(b_state){        
+            $('input[name=update]')
+                .addClass((!b_state) ? 'btn-secondary' : 'btn-primary')
+                .removeClass((b_state) ? 'btn-secondary' : 'btn-primary')             
+                .prop('disabled', !b_state);
+    }
     function toggleInsert(name) {
-        let toggle = (name === 'update');
-        $('input[name=create]').toggle(!toggle);
-        $('input[name=update]').toggle(toggle);
+        ['input[name=update]', 'input[name=create]'].forEach(el => {
+            let show = (name === 'update');
+            $(el)
+                .toggleClass('btn-secondary', 'btn-primary')
+                .toggle(($(el).name == 'create') ? !show : show)
+                .prop('disabled', !$(el).hasClass('btn-primary'));
+        });
     }
 
     function populateForm(data) {
@@ -339,7 +362,7 @@
                 }
             }
         });
-        toggleInsert('update');
+        enableSave(true);
     }
 
     function genLoopObj() {
@@ -479,16 +502,19 @@
     function loader() {
         preventFormSubmit();
         getCourses(document.getElementById('course_title'));
-        // toggleInsert();
+        enableSave();
         SSIFRAME = document.getElementById('ssembed').contentWindow;
 
         // add validation checker for inputs
-        // $('input').on('blur', (e) => {
         document.querySelectorAll("input").forEach((el) => {
-            el.addEventListener('blur', (evt) =>{
+            el.addEventListener('change', (evt) => {
+                // console.log(evt)
                 validateSection($(evt.target).parents('details'));
             });
-            
+            el.addEventListener('blur', (evt) => {
+                // console.log(evt)
+                validateSection($(evt.target).parents('details'));
+            });
         });
 
         // Fetch all the details element.
@@ -504,29 +530,47 @@
                 });
             }, false);
             targetDetail.addEventListener("toggle", (e) => {
-                validateSection(e.target);                
+                validateSection(e.target);
             }, false);
         });
     }
 
-    function validateSection(detail_element){
+    function validateSection(detail_element) {
         // log(detail_element);
         let invalid_count = 0;
+        const valid_section = function () {
+            return (invalid_count === 0)
+        };
         const inputs = $(detail_element).find('input')
-        const summary  = $(detail_element).find('summary')
-        for (let i = inputs.length-1; i >= 0; i--) {
-            if (Boolean($(inputs)[i].checkValidity) && (! $(inputs)[i].checkValidity())) {
+        const summary = $(detail_element).find('summary')
+        for (let i = inputs.length - 1; i >= 0; i--) {
+            if (Boolean($(inputs)[i].checkValidity) && (!$(inputs)[i].checkValidity())) {
                 $(inputs[i]).css("backgroundColor", 'rgba(218, 148, 148, 0.3)');
                 invalid_count++;
             } else {
                 $(inputs[i]).css("backgroundColor", "white");
             }
         }
-        if (invalid_count == 0) {
+        if (valid_section()) {
             summary.addClass('valid');
-        }else{
-            summary.removeClass('valid');                    
+            // console.log("Valid Section")
+        } else {
+            summary.removeClass('valid');
+            // console.log("Invalid Section")                    
         }
+
+        if (b_preValidation()) {
+            $('input[name=update]')
+                .prop('disabled', false)
+                .removeClass('btn-secondary')
+                .addClass('btn-primary');
+        }else{
+            $('input[name=update]')
+                .prop('disabled', true)
+                .addClass('btn-secondary')
+                .removeClass('btn-primary');
+        }
+
     }
 
     function b_preValidation() {
@@ -551,7 +595,7 @@
     }
 
     window.addEventListener('load', loader);
-    
+
     // Handle inbound current time messages.
     window.addEventListener('message', function (event) {
         const cmd = JSON.parse(event.data);

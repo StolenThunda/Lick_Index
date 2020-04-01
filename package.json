@@ -14,12 +14,10 @@
     "eslint-config-google": "^0.14.0",
     "grunt": "^1.0.4",
     "grunt-contrib-jshint": "^2.1.0",
-    "jsdom-quokka-plugin": "^1.0.15",
-    "quokka-jquery-loader": "0.0.3"
+    "jsdom-quokka-plugin": "^1.0.15"
   },
   "quokka": {
     "plugins": [
-      "quokka-jquery-loader",
       "jsdom-quokka-plugin"
     ]
   }
