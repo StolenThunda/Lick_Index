@@ -1,37 +1,40 @@
-<script>
+<script> 
+    "use strict"
     let SSIFRAME;
     let CURR_EMB_CODE;
 
     // TODO: consolidate function logically 1 function = 1 purpose
+    // TODO: pre-submit validation
+    // TODO: Popup/sidebar? chart section
     function output_table(data) {
         // CREATE DYNAMIC TABLE.
-        var table = document.createElement("table");
+        const table = document.createElement("table");
 
         // ADD JSON DATA TO THE TABLE AS ROWS.
-        for (var i = 0; i < data.records.length; i++) {
+        for (let i = 0; i < data.records.length; i++) {
             cur_vals = Object.values(data.records[i]);
             tr = table.insertRow(-1);
-            for (var j = 0; j < cur_vals.length; j++) {
-                var tabCell = tr.insertCell(-1);
+            for (let j = 0; j < cur_vals.length; j++) {
+                let tabCell = tr.insertCell(-1);
                 tabCell.innerHTML = cur_vals[j];
             }
         }
 
-        var header = table.createTHead();
-        var row = header.insertRow(0);
-        var headers = Object.keys(data.records[0]);
-        var cell;
-        for (var i = 0; i < headers.length; i++) {
+        let header = table.createTHead();
+        let row = header.insertRow(0);
+        let headers = Object.keys(data.records[0]);
+        let cell;
+        for (let i = 0; i < headers.length; i++) {
             cell = row.insertCell(i);
             cell.innerHTML = '<b>' + headers[i] + '</b>'
         }
 
         // FINALLY ADD THE NEWLY CREATED TABLE WITH JSON DATA TO A CONTAINER.
-        var btn = document.createElement("BUTTON");
+        const btn = document.createElement("BUTTON");
         btn.className = 'btn btn-primary';
         btn.innerHTML = "Clear";
         btn.onclick = () => {
-            var divContainer = document.getElementById("output");
+            const divContainer = document.getElementById("output");
             divContainer.innerHTML = " ";
         };
         document.getElementById("output").appendChild(btn);
@@ -39,7 +42,7 @@
     }
 
     function createDefaultTooltips() {
-        var defaults = {
+        const defaults = {
             title: `Course Title 
                         The sheet names in the attached Spreadsheet`,
             lick: `Lick Name
@@ -49,15 +52,15 @@
                         Lesson 1 Pattern 3, L1P3)`
 
         };
-        var course_title = document.createElement("PRE");
+        const course_title = document.createElement("PRE");
         course_title.id = "tip_course_title";
         course_title.innerHTML = defaults['title'];
 
-        var lbl_lick = document.createElement("PRE");
+        const lbl_lick = document.createElement("PRE");
         lbl_lick.id = 'tip_lbl_lick';
         lbl_lick.innerHTML = defaults['lick']
 
-        var tips = document.getElementById('tip_container');
+        const tips = document.getElementById('tip_container');
         tips.appendChild(course_title);
         tips.appendChild(lbl_lick);
 
@@ -65,17 +68,33 @@
 
     function labels() {
         createDefaultTooltips();
-        var suffix = "";
-        $('form label').each(function (index) {
-            suffix = this.htmlFor;
-            tip = $('#tip_' + suffix);
-            this.title = (tip) ? tip.html() : '';
-        });
+        document.querySelectorAll('form label');
+        let lbls = $('form label');
+        if (lbls.length > 0) {
+            $.each(lbls, (idx, el) => {
+                el.addEventListener('click', function (e) {
+                    let str_tip = '#tip_' + this.htmlFor;
+                    let tip = $(str_tip);
+                    if (!tip) return;
+                    log(tip)
+                    let config = {
+                        position: 'top-end',
+                        title: this.textContent,
+                        icon: 'info',
+                        html: $('<div>').append(
+                            tip.clone()
+                        ).html()
+                    }
+                    log(config);
+                    alert2(config);
+                }, false)
+            });
+        }
     }
 
     function preventFormSubmit() {
-        var forms = document.querySelectorAll('form');
-        for (var i = 0; i < forms.length; i++) {
+        const forms = document.querySelectorAll('form');
+        for (let i = 0; i < forms.length; i++) {
             forms[i].addEventListener('submit', function (event) {
                 event.preventDefault();
             });
@@ -94,9 +113,9 @@
 
     function getLicks(e) {
         loading("Loading Licks")
-        var lick_list = document.getElementById('lick_names');
-        var idx = e.selectedIndex;
-        var title = e.options[idx].text;
+        const lick_list = document.getElementById('lick_names');
+        const idx = e.selectedIndex;
+        const title = e.options[idx].text;
         $('input[type=reset]').click();
         e.selectedIndex = idx;
         if (title == '--') {
@@ -122,9 +141,9 @@
     function addListValues(values, el) {
         clearList(el);
         if (typeof values === 'undefined') return;
-        for (var i = 0; i < values.length; i++) {
+        for (let i = 0; i < values.length; i++) {
             if (values[i] === "" || values[i] == "Courses") continue;
-            var option = document.createElement("OPTION");
+            const option = document.createElement("OPTION");
             option.value = values[i];
             option.text = values[i];
             el.appendChild(option);
@@ -134,7 +153,7 @@
 
     function clearList(list) {
         if (list == null) return;
-        for (i = list.options.length - 1; i >= 0; i--) {
+        for (let i = list.options.length - 1; i >= 0; i--) {
             if (list.options[i].text !== '--') {
                 list.options[i].remove();
             }
@@ -142,26 +161,38 @@
     }
 
     function onFailure(err) {
-        var msg = `${err.name}  ${err.message}`;
-        alert(msg);
+        let msg = `${err.name}  ${err.message}`;
+        alert2({
+            title: err.name,
+            icon: 'error',
+            text: err.message
+        });
         log(msg);
     }
 
     function onSuccess(val) {
-        var msg = (val) ? 'Op Successful' : 'No Joy';
-        alert(msg);
+        let msg = (val) ? 'Op Successful' : 'No Joy';
+        alert2({
+            title: msg,
+            icon: 'success'
+        });
     }
 
     function doAction(btn) {
-        var title = document.getElementById('course_title').value;
-        var lick = document.getElementById('lbl_lick').value;
-        var frm = document.getElementById('myForm');
-        var f = $('form').serializeArray();
-        var frm_data = f.reduce(function (a, x) {
+        if (!b_preValidation()) return alert2({
+            icon: 'error',
+            title: 'Error',
+            text: 'Invalid Form'
+        });
+        loading(btn.name.toUpperCase());
+        const title = document.getElementById('course_title').value;
+        const lick = document.getElementById('lbl_lick').value;
+        const frm = document.getElementById('myForm');
+        const f = $('form').serializeArray();
+        const frm_data = f.reduce(function (a, x) {
             a[x.name] = x.value;
             return a;
         }, {});
-        loading(btn.name.toUpperCase());
         switch (btn.name) {
             case 'reset':
                 toggleInsert();
@@ -172,7 +203,7 @@
             case 'next':
             case 'read':
                 if (title !== '--' && lick !== '') {
-                    sibling = (btn.name === 'read') ? null : btn.name;
+                    let sibling = (btn.name === 'read') ? null : btn.name;
                     google.script.run
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(populateForm)
@@ -181,7 +212,10 @@
                     loadMetaData();
                     break;
                 }
-                alert('Title and Lick required for this search')
+                alert2({
+                    text: 'Title and Lick required for this search',
+                    icon: 'info'
+                })
                 loading("Done");
                 break;
             case 'dump':
@@ -193,58 +227,91 @@
                     loading("Done");
                     break;
                 }
-                alert('Choose A course')
+                alert2({
+                    text: 'Choose A course',
+                    icon: 'error'
+                })
                 break;
             case 'delete':
-                if (confirm(`Are you sure you want to delete lick: "${lick}"`)) {
-                    google.script.run
-                        .withFailureHandler(onFailure)
-                        .withSuccessHandler(() => {
-                            onSuccess();
-                            loading("Done");
-                            $('input[type=reset]').click();
-                        })
-                        .delete_lick(title, lick);
-                    document.getElementById('lbl_lick').value = "";
-                }
-                case 'update':
-                    if (confirm(`Are you sure you want to update lick: "${lick}"`)) {
+                alert2({
+                    showCancelButton: true,
+                    text: `Are you sure you want to delete lick: "${lick}"`,
+                    icon: 'question',
+                    confirmButtonText: 'Confirm'
+                }).then((result) => {
+                    if (result.value) {
+                        google.script.run
+                            .withFailureHandler(onFailure)
+                            .withSuccessHandler(() => {
+                                onSuccess();
+                                loading("Done");
+                                $('input[type=reset]').click();
+                            })
+                            .delete_lick(title, lick);
+                        document.getElementBy
+                    }
+                    Id('lbl_lick').value = "";
+                });
+                break;
+            case 'update':
+                alert2({
+                    showCancelButton: true,
+                    text: `Are you sure you want to update lick: "${lick}"`,
+                    icon: 'question',
+                    confirmButtonText: 'Confirm'
+                }).then((result) => {
+                    log(result)
+                    if (result.value) {
                         google.script.run
                             .withFailureHandler(onFailure)
                             .withSuccessHandler((data) => {
-                                onSuccess(Object.keys(data).includes('xs'));
-                                if (Object.keys(data).includes('xs')) loadChartData(data);
-
+                                let status = (data !== null);
+                                if (status)
+                                    if (Object.keys(data).includes('ys')) {
+                                        onSuccess(true);
+                                        loadChartData(data);
+                                    }
+                                $('input[name=read]').click();
                             })
                             .update_lick(frm_data);
+
                     }
-                    break;
-                case 'create':
-                default:
-                    if (title !== '--' && lick !== '') {
-                        // check for dupes
-                        if (currentDList().indexOf(lick) >= 0) {
-                            alert(`Lick ${lick} is already assigned!!!`);
-                            $('input[name=update]').click();
-                            return;
-                        }
-                        google.script.run
-                            .withFailureHandler(onFailure)
-                            .withSuccessHandler((data) => {
-                                if (Object.keys(data).includes('xs')) loadChartData(data);
-                                onSuccess(data);
-                            })
-                            .processForm(frm_data);
-                        $('input[type=reset]').click();
-                    } else {
-                        alert('At least, Title and Lick required for saving!!!');
+                })
+
+                break;
+            case 'create':
+            default:
+                if (title !== '--' && lick !== '') {
+                    // check for dupes
+                    if (currentDList().indexOf(lick) >= 0) {
+                        alert2({
+                            text: `Lick ${lick} is already assigned!!!`,
+                            icon: 'info',
+                            title: "Duplication Warning"
+                        });
+                        $('input[name=update]').click();
+                        return;
                     }
+                    google.script.run
+                        .withFailureHandler(onFailure)
+                        .withSuccessHandler((data) => {
+                            if (Object.keys(data).includes('xs')) loadChartData(data);
+                            onSuccess(data);
+                        })
+                        .processForm(frm_data);
+                    $('input[type=reset]').click();
+                } else {
+                    alert2({
+                        text: 'At least, Title and Lick required for saving!!!',
+                        icon: 'info'
+                    });
+                }
         }
         loading("Done");
     }
 
     function toggleInsert(name) {
-        var toggle = (name === 'update');
+        let toggle = (name === 'update');
         $('input[name=create]').toggle(!toggle);
         $('input[name=update]').toggle(toggle);
     }
@@ -256,7 +323,7 @@
             value = key[1];
             key = key[0]
             if (key !== '') {
-                var ctrl = $('#' + key);
+                const ctrl = $('#' + key);
                 // if (key.indexOf('loop') >= 0) log(`${ctrl.prop('id')} (${ctrl.prop('type')}): ${value}`);
                 switch (ctrl.prop("type")) {
                     case "radio":
@@ -280,26 +347,33 @@
             start: document.getElementById('loop_start').value,
             end: document.getElementById('loop_end').value
         }
-        window.loop.ms_duration = Math.round((window.loop.end - window.loop.start) * 1000);
-        if (SSIFRAME) {
-            SSIFRAME.postMessage(`{"method":"setLoop", "arg" : [${window.loop.start}, ${window.loop.end}]}`,
-                'https://www.soundslice.com');
-        }
+        // if (SSIFRAME !== null) {
+        // log(SSIFRAME)
+        SSIFRAME.postMessage(`{"method":"setLoop", "arg" : [${window.loop.start}, ${window.loop.end}]}`,
+            'https://www.soundslice.com');
+        // }
         loading('Done')
     }
 
     function loadMetaData(e) {
         e = (typeof e === "undefined") ? document.getElementById('course_title') : e;
-        let idx = e.selectedIndex
-        var title = e.options[idx].text;
+        const idx = e.selectedIndex;
+        const title = e.options[idx].text;
         loading("Meta Data");
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(data => {
                 log(data);
                 if (CURR_EMB_CODE !== data.ss_code) {
-                    const url = 'https://www.soundslice.com/slices/' + data.ss_code +
-                        '/embed/?force_top_video=1&recording_idx=2&scroll_type=1&api=1';
+                    // Soundslice Api: https://www.soundslice.com/help/player-api/#activating
+                    let url = 'https://www.soundslice.com/slices/' + data.ss_code + '/embed/?';
+                    url +=
+                        'force_top_video=1'; //  force video to always be displayed above notation, regardless of embed width.
+                    url += '&narrow_video_height=45p'; // video is 45% of iframe
+                    url += '&recording_idx=2'; // switch to video
+                    url += '&horiz=1'; // notation will scroll continuously to the right
+                    url += '&zoom=-10'; // Default zoom is 0, and allowed values are integers between -25 and 25
+                    url += '&api=1'; // activate api
                     document.getElementById('ssembed').src = url;
                     CURR_EMB_CODE = data.ss_code;
                 }
@@ -318,10 +392,10 @@
     }
 
     function loadChartData(chart_data) {
-        if (!chart_data) return;
         log(chart_data);
-        var ctx = document.getElementById('mychart').getContext('2d');
+        let ctx = document.getElementById('mychart').getContext('2d');
         if (window.lickChart) window.lickChart.destroy();
+        if (!chart_data) return;
         window.lickChart = new Chart(ctx, genChartConfig(chart_data));
         // loadMetaData();
         loading("Done");
@@ -379,20 +453,18 @@
                         backgroundColor: genRGBA(chart_data.xs.length, 1),
                         borderColor: genRGBA(chart_data.xs.length, 2),
                         borderWidth: 1
-
                     }
                 }
-
             }
         };
     }
 
     function genRGBA(numCols, opacity) {
-        var colColors = [];
+        let colColors = [];
         const getRand256 = () => {
             return Math.floor(Math.random() * 256)
         };
-        for (var i = 0; i < numCols - 1; i++) {
+        for (let i = 0; i < numCols - 1; i++) {
             colColors.push(`rgba(${getRand256()}, ${getRand256()}, ${getRand256()}, ${opacity})`);
         }
         return colColors;
@@ -407,9 +479,58 @@
     function loader() {
         preventFormSubmit();
         getCourses(document.getElementById('course_title'));
-        log();
-        toggleInsert();
+        // toggleInsert();
         SSIFRAME = document.getElementById('ssembed').contentWindow;
+
+        // add validation checker for inputs
+        // $('input').on('blur', (e) => {
+        document.querySelectorAll("input").forEach((el) => {
+            el.addEventListener('blur', (evt) =>{
+                validateSection($(evt.target).parents('details'));
+            });
+            
+        });
+
+        // Fetch all the details element.
+        const details = document.querySelectorAll("details");
+        // Add the onclick listeners.
+        details.forEach((targetDetail) => {
+            targetDetail.addEventListener("click", () => {
+                // Close all the details that are not targetDetail.
+                details.forEach((detail) => {
+                    if (detail !== targetDetail) {
+                        detail.removeAttribute("open");
+                    }
+                });
+            }, false);
+            targetDetail.addEventListener("toggle", (e) => {
+                validateSection(e.target);                
+            }, false);
+        });
+    }
+
+    function validateSection(detail_element){
+        // log(detail_element);
+        let invalid_count = 0;
+        const inputs = $(detail_element).find('input')
+        const summary  = $(detail_element).find('summary')
+        for (let i = inputs.length-1; i >= 0; i--) {
+            if (Boolean($(inputs)[i].checkValidity) && (! $(inputs)[i].checkValidity())) {
+                $(inputs[i]).css("backgroundColor", 'rgba(218, 148, 148, 0.3)');
+                invalid_count++;
+            } else {
+                $(inputs[i]).css("backgroundColor", "white");
+            }
+        }
+        if (invalid_count == 0) {
+            summary.addClass('valid');
+        }else{
+            summary.removeClass('valid');                    
+        }
+    }
+
+    function b_preValidation() {
+        return $('details').length === $('details summary.valid').length;
     }
 
     function currentDList() {
@@ -420,79 +541,82 @@
 
     function log(data, bTrace, bString) {
         if (!data) return;
-        if (bTrace) console.trace(data)
-        if (bString) console.dir(JSON.stringify(data, null, 2));
+        if (bTrace === true) console.trace(data)
+        if (bString === true) console.dir(JSON.stringify(data, null, 2));
         console.dir(data);
     }
 
+    function alert2(obj) {
+        return Swal.fire(obj);
+    }
 
     window.addEventListener('load', loader);
-
+    
     // Handle inbound current time messages.
     window.addEventListener('message', function (event) {
         const cmd = JSON.parse(event.data);
         // log(event, true, true);
         switch (cmd.method) {
-            // case 'ssPlayerReady':
-            //     log('Player is ready.');
-            //     break;
-            // case 'ssPlay':
-            //     log('Play has started.');
-            //     break;
+            case 'ssPlayerReady':
+                log('Player is ready.');
+                break;
+            case 'ssPlay':
+                log('Play has started.');
+                break;
             case 'ssPause':
-                // log('Play has stopped.');
+                log('Play has stopped.');
                 SSIFRAME.postMessage('{"method": "getCurrentTime"}', 'https://www.soundslice.com');
                 break;
-            // case 'ssAudioEnd':
-            //     log('Play has stopped due to reaching the end.');
-            //     break;
-            // case 'ssSeek':
-            //     log('Play has seeked to ' + cmd.arg + ' seconds.');
-            //     break;
+            case 'ssAudioEnd':
+                log('Play has stopped due to reaching the end.');
+                break;
+            case 'ssSeek':
+                log('Play has seeked to ' + cmd.arg + ' seconds.');
+                break;
             case 'ssCurrentTime':
                 log('Current time is ' + cmd.arg + ' seconds.');
                 break;
-            // case 'ssDuration':
-            //     log('Duration is ' + cmd.arg + ' seconds.');
-            //     break;
-            // case 'ssCurrentBar':
-            //     log('Current bar is ' + cmd.arg, true, true);
-            //     break;
-            // case 'ssBarCount':
-            //     log('Bar count is ' + cmd.arg);
-            //     break;
-            // case 'ssAudioLoaded':
-            //     log('Recording ' + cmd.arg + ' has loaded.');
-            //     break;
-            // case 'ssAudioSourceChanged':
-            //     log('Recording changed to ' + cmd.arg);
-            //     break;
-            // case 'ssSpeed':
-            //     log('Speed is ' + (cmd.arg * 100) + ' percent.');
-            //     break;
-            // case 'ssVolume':
-            //     log('Volume is ' + (cmd.arg * 100) + ' percent.');
-            //     break;
-            // case 'ssToggleSettings':
-            //     if (cmd.arg === 1) {
-            //         log('Settings were toggled on.');
-            //     } else if (cmd.arg === 0) {
-            //         log('Settings were toggled off.');
-            //     }
-            //     break;
-            // case 'ssPrint':
-            //     log('User clicked Print');
-            //     break;
-            // case 'ssZoom':
-            //     log('Zoom is now ' + cmd.arg);
-            //     break;
-            // case 'ssNotationVisibility':
-            //     log('Notation visibility is now ' + cmd.arg);
+            case 'ssDuration':
+                log('Duration is ' + cmd.arg + ' seconds.');
+                break;
+            case 'ssCurrentBar':
+                log('Current bar is ' + cmd.arg, true, true);
+                break;
+            case 'ssBarCount':
+                log('Bar count is ' + cmd.arg);
+                break;
+            case 'ssAudioLoaded':
+                log('Recording ' + cmd.arg + ' has loaded.');
+                break;
+            case 'ssAudioSourceChanged':
+                log('Recording changed to ' + cmd.arg);
+                break;
+            case 'ssSpeed':
+                log('Speed is ' + (cmd.arg * 100) + ' percent.');
+                break;
+            case 'ssVolume':
+                log('Volume is ' + (cmd.arg * 100) + ' percent.');
+                break;
+            case 'ssToggleSettings':
+                if (cmd.arg === 1) {
+                    log('Settings were toggled on.');
+                } else if (cmd.arg === 0) {
+                    log('Settings were toggled off.');
+                }
+                break;
+            case 'ssPrint':
+                log('User clicked Print');
+                break;
+            case 'ssZoom':
+                log('Zoom is now ' + cmd.arg);
+                break;
+            case 'ssNotationVisibility':
+                log('Notation visibility is now ' + cmd.arg);
 
-            //     break;
-            // case 'ssFullscreenSupport':
-            //     log('Does this browser support full screen? ' + cmd.arg);
-            //     break;
+                break;
+            case 'ssFullscreenSupport':
+                log('Does this browser support full screen? ' + cmd.arg);
+                break;
             case 'ssLoopChange':
                 // log('Loop Changed:' + cmd.arg);
                 SSIFRAME.postMessage('{"method": "play"}', 'https://www.soundslice.com');

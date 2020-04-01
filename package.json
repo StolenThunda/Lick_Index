@@ -4,8 +4,8 @@
   "description": "TXBA Lick Index",
   "main": "Code.js",
   "scripts": {
-    "pushw": "npx clasp push --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pushw": "npx clasp push --watch"
   },
   "author": "Antonio Moses",
   "license": "ISC",
@@ -13,6 +13,14 @@
     "eslint": "^6.8.0",
     "eslint-config-google": "^0.14.0",
     "grunt": "^1.0.4",
-    "grunt-contrib-jshint": "^2.1.0"
+    "grunt-contrib-jshint": "^2.1.0",
+    "jsdom-quokka-plugin": "^1.0.15",
+    "quokka-jquery-loader": "0.0.3"
+  },
+  "quokka": {
+    "plugins": [
+      "quokka-jquery-loader",
+      "jsdom-quokka-plugin"
+    ]
   }
 }

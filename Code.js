@@ -1,5 +1,6 @@
+/* eslint-disable valid-jsdoc */
 /* eslint-disable no-unused-vars */
-/* eslint-disable camelcase */
+/* eslint-disable camelastColase */
 /* eslint-disable require-jsdoc */
 const zip = (ks, vs) => ks.reduce((o, k, i) => {
   o[k] = vs[i];
@@ -49,8 +50,8 @@ function processForm(frm) {
       return ws.appendRow(extract_form_data_(frm));
     } else {
       const v = update_lick(frm, ws);
-      Logger.log(v);
-      return v;
+      Logger.log(v); 
+      return v; //
     }
   }
   Logger.log('Sheet %s: Not Found', frm.course_title);
@@ -80,8 +81,8 @@ function get_sheet_names() {
 function get_licks_names(sheet) {
   const out = [];
   const ws = get_sheet_by_course_title_(sheet);
-  const lr = ws.getLastRow();
-  for (let i = 2; i <= lr; i++) {
+  const lastRow = ws.getLastRow();
+  for (let i = 2; i <= lastRow; i++) {
     out.push(ws.getRange(i, 1).getValue());
   }
   return out;
@@ -96,24 +97,24 @@ function process_chart_data(data) {
   // TODO: remove hard coded idx
   const total_notes = info[head.indexOf('Total Notes')];
   const bnd_idx = head.indexOf('Bending Count');
-  const leg_idx = head.indexOf('Legato Count')
+  const leg_idx = head.indexOf('Legato Count');
   const bnd_cnt = info[bnd_idx];
-  const leg_cnt = info[bnd_idx];
+  const leg_cnt = info[leg_idx];
   const vals = [
     ['Attribute', 'value'],
   ];
   Logger.log(head);
-  Logger.log(info);
+  Logger.log(info); 
   idx = [4, 6, 10, 17, 18]; // column index on sheet
   //  change labels
   head[leg_idx] = `${head[leg_idx].split(' ')[0]} Density %(cnt: ${leg_cnt})`;
   head[bnd_idx] = `${head[bnd_idx].split(' ')[0]} Density %(cnt: ${bnd_cnt})`;
 
-  // calc and set vals
+  // calculate percentages and set vals
   info[leg_idx] = parseInt((leg_cnt / total_notes) * 100);
   info[bnd_idx] = parseInt((bnd_cnt / total_notes) * 100);
 
-
+  // prune non-chartable values
   for (let i = idx.length - 1; i >= 0; i--) {
     Logger.log(`REMOVING (${idx[i]}): ${head[idx[i]]} == ${info[idx[i]]}`);
     rem1 = head.splice(idx[i], 1);
@@ -171,7 +172,7 @@ function get_lick(sheet, lick, sibling) {
   const ws = get_sheet_by_course_title_(sheet);
   const row = get_lick_row_(ws, lick, sibling);
   Logger.log(`sibling: ${sibling}`);
-  Logger.log(`get_lick_row :`);
+  Logger.log(`get_lick_row : ${row}`);
   const form_ctrls = [
     'lbl_lick',
     'finger_diff',
@@ -226,16 +227,16 @@ function get_sheet_by_course_title_(sheet) {
 }
 
 function get_course_meta(course) {
-  let row = [];
+  const row = [];
   const meta_route = 'Course meta_data';
   const meta_sh = get_sheet_by_course_title_(meta_route);
-  const lc = meta_sh.getLastColumn();
-  const lr = meta_sh.getLastRow();
-  for (let i = 2; i <= lr; i++) {
+  const lastCol = meta_sh.getLastColumn();
+  const lastRow = meta_sh.getLastRow();
+  for (let i = 2; i <= lastRow; i++) {
     const c = meta_sh.getRange(i, 1).getValue();
     if (c == course) {
-      // row = meta_sh.getRange(i, 1, 1, lc).getValue();
-      for (let j = 1; j <= lc; j++) {
+      // row = meta_sh.getRange(i, 1, 1, lastCol).getValue();
+      for (let j = 1; j <= lastCol; j++) {
         value = meta_sh.getRange(i, j).getValue();
         row.push(value);
         // Logger.log(value);
@@ -260,15 +261,16 @@ function get_simple_header(sh) {
  * @param {string} lick Name of lick
  * @param {tri-state bit} action (-1, 0 , 1 = prev, current, next)
  * @param {bool} trim don't count last 2 columns (loop: start/end)
+ * @returns range object with Row data for lick
  */
 function get_lick_row_(ws, lick, action, trim) {
   let offset = (action === null) ? 0 : (action === 'prev') ? -1 : 1;
-  const lr = ws.getLastRow();
-  const lc = ws.getLastColumn();
-  const header = ws.getRange(1, 1, 1, lc);
+  const lastRow = ws.getLastRow();
+  const lastCol = ws.getLastColumn();
+  const header = ws.getRange(1, 1, 1, lastCol);
   const range = {
-    lr: lr,
-    lc: lc,
+    lastRow: lastRow,
+    lastCol: lastCol,
     lick: lick,
     idx: -1,
     data: [],
@@ -276,11 +278,11 @@ function get_lick_row_(ws, lick, action, trim) {
     notation: 'A:1',
     data_range: null,
   };
-  for (let i = 2; i <= lr; i++) {
+  for (let i = 2; i <= lastRow; i++) {
     const lick_id = ws.getRange(i, 1).getValue();
     if (lick_id == lick) {
-      offset = (i + offset === 1 || i + offset > lr) ? 0 : offset;
-      r = ws.getRange(i + offset, 1, 1, (trim) ? lc - 2 : lc);
+      offset = (i + offset === 1 || i + offset > lastRow) ? 0 : offset;
+      r = ws.getRange(i + offset, 1, 1, (trim) ? lastCol - 2 : lastCol);
       range.lick = ws.getRange(i + offset, 1).getValue();
       range.data_range = r;
       range.idx = i;

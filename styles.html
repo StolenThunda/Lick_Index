@@ -1,11 +1,47 @@
 <style>
+    details {
+        /* padding: 15px; */
+        background-color: #f6f7f8;
+        margin-bottom: 20px;
+
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        padding: .5em .5em 0;
+    }
+
+    summary {
+        cursor: pointer;
+
+        font-weight: bold;
+        margin: -.5em -.5em 0;
+        padding: .5em;
+    }
+
+    summary::-webkit-details-marker {
+        display: none;
+    }
+
+    summary.valid:before {
+        content: "\2714";
+        /* the new icon */
+        color: #696f7c;
+        margin-right: 5px;
+    }
+
+    summary:before {
+        content: "\2718";
+        /* the new icon */
+        color: #696f7c;
+        margin-right: 5px;
+    }
+
     .container.form_row {
         justify-content: space-between;
     }
 
     .tabcontent {
-       position: relative;
-       width:57vw;
+        position: relative;
+        width: 57vw;
     }
 
     #form {
@@ -20,10 +56,11 @@
     #ss {
         grid-area: ss;
     }
-    
+
     #ssembed {
         margin-bottom: -360;
     }
+
     fieldset {
         padding: 1rem;
     }
@@ -41,8 +78,8 @@
         grid-gap: 5px;
         display: grid;
         grid-template-areas: 'form ss ss'
-                             'form chart chart';
-        grid-template-rows: auto auto auto; 
+            'form chart chart';
+        grid-template-rows: auto auto auto;
     }
 
     .crud {
@@ -67,6 +104,9 @@
         grid-auto-flow: column;
     }
 
+    #tip_container {
+        display: none;
+    }
 
     table,
     th,
@@ -121,14 +161,12 @@
     }
 
     pre {
-        display: none !important;
-        border: 1px solid;
+        text-align: initial !important;
         padding: .5em;
-        color: white;
-        background: lightslategrey;
     }
 
     label {
+        cursor: pointer;
         font-style: italic;
         color: blue;
     }
