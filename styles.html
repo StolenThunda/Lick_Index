@@ -35,6 +35,9 @@
         margin-right: 5px;
     }
 
+    .swal-output {
+        width: inherit !important;
+    }
     .container.form_row {
         justify-content: space-between;
     }
@@ -53,7 +56,9 @@
         grid-area: datachart;
     }
 
-    
+    #output {
+        grid-area: output;
+    }
 
     #ss {
         grid-area: ss;
@@ -80,7 +85,9 @@
         grid-gap: 5px;
         display: grid;
         grid-template-areas: 'form ss ss'
-                             'form datachart datachart';
+                             'form datachart datachart'
+                             'form datachart datachart'
+                             'output datachart datachart';
         grid-template-rows: auto auto auto;
     }
 

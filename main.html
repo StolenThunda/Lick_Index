@@ -24,29 +24,29 @@
     // TODO: pre-submit validation
     // TODO: Popup/sidebar? chart section
     function output_table(data) {
-        // CREATE DYNAMIC TABLE.
+        log(data);
         const table = document.createElement("table");
+        let header = table.createTHead();
+        let headers = data.shift();
 
         // ADD JSON DATA TO THE TABLE AS ROWS.
-        for (let i = 0; i < data.records.length; i++) {
-            cur_vals = Object.values(data.records[i]);
-            tr = table.insertRow(-1);
+        for (let i = 0; i < data.length; i++) {
+            let cur_vals = data[i];
+            let tr = table.insertRow(-1);
             for (let j = 0; j < cur_vals.length; j++) {
                 let tabCell = tr.insertCell(-1);
                 tabCell.innerHTML = cur_vals[j];
             }
         }
 
-        let header = table.createTHead();
         let row = header.insertRow(0);
-        let headers = Object.keys(data.records[0]);
         let cell;
         for (let i = 0; i < headers.length; i++) {
             cell = row.insertCell(i);
             cell.innerHTML = `<b>${headers[i]}</b>`
         }
 
-        // FINALLY ADD THE NEWLY CREATED TABLE WITH JSON DATA TO A CONTAINER.
+        // FINALLY ADD THE NEWLY CREATED TABLE TO A CONTAINER.
         const btn = document.createElement("BUTTON");
         btn.className = 'btn btn-primary';
         btn.innerHTML = "Clear";
@@ -56,6 +56,18 @@
         };
         document.getElementById("output").appendChild(btn);
         document.getElementById("output").appendChild(table);
+        $('#output table').DataTable({
+        "scrollY": 200,
+        "scrollX": true
+    } );
+
+        // btn.style.cssText = "display: block;top: 0px !important;"
+        // alert2({
+        //     title: "Current Data",
+        //     icon: 'info',
+        //     html: $('#output').clone(),
+        //     customClass: 'swal-output'
+        // });
     }
 
     function createDefaultTooltips() {
@@ -153,7 +165,9 @@
         enableBtnLandscape(e);
         if (!getLicks(e)) return;
         loadMetaData(e);
-        if (typeof SSIFRAME !== 'undefined') {SSIFRAME.postMessage('{"method": "clearLoop"}', 'www.soundslice.com');}
+        if (typeof SSIFRAME !== 'undefined') {
+            SSIFRAME.postMessage('{"method": "clearLoop"}', 'www.soundslice.com');
+        }
     }
 
     function enableBtnLandscape(e) {
@@ -208,7 +222,12 @@
 
     function doAction(btn) {
         if (!b_allSectionsValid() &&
-            !['prev', 'read', 'next', 'reset', 'landscape'].includes(btn.name)) return alert2({
+            !['prev', 
+            'read', 
+            'next', 
+            'reset', 
+            'landscape', 
+            'dump'].includes(btn.name)) return alert2({
             icon: 'error',
             title: 'Error',
             text: 'Invalid Form'
@@ -257,7 +276,7 @@
                     google.script.run
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(output_table)
-                        .read_all_values(title);
+                        .get_landscape(title);
                     loading("Done");
                     break;
                 }
@@ -410,7 +429,8 @@
             end: document.getElementById('loop_end').value
         }
         if (typeof SSIFRAME !== 'undefined')
-            SSIFRAME.postMessage('{"method":"setLoop", "arg" : [' + window.loop.start + ',' + window.loop.end + ']}', 'www.soundslice.com');
+            SSIFRAME.postMessage('{"method":"setLoop", "arg" : [' + window.loop.start + ',' + window.loop.end + ']}',
+                'www.soundslice.com');
         loading('Done')
     }
 
@@ -466,7 +486,7 @@
 
 
     function loadChartData(chart_data, configurator) {
-        log(chart_data);
+        // log(chart_data);
         // log(configurator);
         let ctx = document.getElementById('datachart').getContext('2d');
         log(CHART);
@@ -481,41 +501,72 @@
     function genLandscapeChartConfig(chart_data) {
         // log(chart_data);
         const attribute_names = chart_data.shift();
+        let idx = 0;
+        const config = {
+            datasets: [],
+            labels: null,
+            xAxes_label: 'Licks',
+            yAxes_label: 'Value'
+        };
         const objDS = {};
-        const datasets = [];
-
-        for (let i = 0; i <= attribute_names.length - 1; i++) {
-            let attr = attribute_names[i];
-            objDS[attr] = [];
-            for (let j = 0; j <= chart_data.length - 1; j++) {
-                objDS[attr].push(chart_data[j][i]);
-            }
-        }
-        const labels = objDS['Lick Name'];
-        delete objDS['Lick Name'];
-        for (let [k, v] of Object.entries(objDS)) {
-            datasets.push({
-                label: k,
-                backgroundColor: genRGBA(objDS[k].length, 1)[0],
-                borderColor: genRGBA(objDS[k].length, 1)[0],
-                data: v,
-                fill: false,
+        const lick = $('#lbl_lick').val();
+        const lick_selected = (lick.length > 0);
+        // log(`Sel: ${lick_selected}; Lick: ${lick} (${typeof lick})`)
+        if (lick_selected) {
+            attribute_names.pop();
+            config.labels = attribute_names;
+            chart_data.forEach(data => {
+                let ds_lbl = data.shift();
+                config.datasets.push({
+                    label: ds_lbl,
+                    backgroundColor: genRGBA(data.length, 1)[0],
+                    borderColor: genRGBA(data.length, 1)[0],
+                    type: 'bar',
+                    data: data,
+                    hidden: (ds_lbl !== lick),
+                    fill: false,
+                });
             });
+            config.xAxes_label = 'Attributes';
+            config.title = lick;
+        } else {
+            for (let i = 0; i <= attribute_names.length - 1; i++) {
+                let attr = attribute_names[i];
+                objDS[attr] = [];
+                for (let j = 0; j <= chart_data.length - 1; j++) {
+                    objDS[attr].push(chart_data[j][i]);
+                }
+            }
+            config.labels = objDS['Lick Name'];
+            delete objDS['Lick Name'];
+            for (let [k, v] of Object.entries(objDS)) {
+                config.datasets.push({
+                    label: k,
+                    backgroundColor: genRGBA(objDS[k].length, 1)[0],
+                    borderColor: genRGBA(objDS[k].length, 1)[0],
+                    data: v,
+                    hidden: (idx !== 0),
+                    fill: false,
+                });
+                idx++;
+            }
+            config.title = `Course: ${document.getElementById('course_title').value}`;
         }
-        
-        // log(labels)
-        log(datasets)
-        var config = {
+        log(config);
+        return {
             type: 'line',
             data: {
-                labels: labels,
-                datasets: datasets
+                labels: config.labels,
+                datasets: config.datasets
             },
             options: {
                 responsive: true,
                 title: {
                     display: true,
-                    text: `Course: ${document.getElementById('course_title').value} Landscape`,
+                    text:  `${config.title} Landscape`,
+                },
+                legend: {
+                    position: 'left'
                 },
                 tooltips: {
                     mode: 'index',
@@ -530,22 +581,20 @@
                         display: true,
                         scaleLabel: {
                             display: true,
-                            labelString: 'Licks'
+                            labelString: config.xAxes_label
                         }
                     }],
                     yAxes: [{
                         display: true,
                         scaleLabel: {
                             display: true,
-                            labelString: 'Value'
+                            labelString: config.yAxes_label
                         }
                     }]
                 }
 
             }
         };
-        log(config);
-        return config;
     }
 
     function genLickChartConfig(chart_data) {
