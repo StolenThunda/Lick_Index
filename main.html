@@ -1,7 +1,24 @@
 <script>
-    "use strict"
+    "use strict";
     let SSIFRAME;
     let CURR_EMB_CODE;
+    let SHEET_ID = window.SHEET_ID || null;
+    let CHART;
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        onOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    })
+
+    function b_allSectionsValid() {
+        return $('details').length === $('details summary.valid').length;
+    }
 
     // TODO: consolidate function logically 1 function = 1 purpose
     // TODO: pre-submit validation
@@ -26,7 +43,7 @@
         let cell;
         for (let i = 0; i < headers.length; i++) {
             cell = row.insertCell(i);
-            cell.innerHTML = '<b>' + headers[i] + '</b>'
+            cell.innerHTML = `<b>${headers[i]}</b>`
         }
 
         // FINALLY ADD THE NEWLY CREATED TABLE WITH JSON DATA TO A CONTAINER.
@@ -73,7 +90,7 @@
         if (lbls.length > 0) {
             $.each(lbls, (idx, el) => {
                 el.addEventListener('click', function (e) {
-                    let str_tip = '#tip_' + this.htmlFor;
+                    let str_tip = `#tip_${this.htmlFor}`;
                     let tip = $(str_tip);
                     if (!tip) return;
                     log(tip)
@@ -86,7 +103,7 @@
                         ).html()
                     }
                     log(config);
-                    alert2(config);
+                    Toast.fire(config);
                 }, false)
             });
         }
@@ -108,7 +125,7 @@
             .withSuccessHandler(addListValues)
             .withUserObject(e)
             .get_sheet_names();
-        labels()
+        labels();
     }
 
     function getLicks(e) {
@@ -133,9 +150,20 @@
     }
 
     function initPage(e) {
+        enableBtnLandscape(e);
         if (!getLicks(e)) return;
         loadMetaData(e);
-        SSIFRAME.postMessage('{"method": "clearLoop"}', 'https://www.soundslice.com');
+        if (typeof SSIFRAME !== 'undefined') {SSIFRAME.postMessage('{"method": "clearLoop"}', 'www.soundslice.com');}
+    }
+
+    function enableBtnLandscape(e) {
+        const validTitle = e.options[e.selectedIndex].text !== '--';
+        $('input[name=landscape]')
+            .toggle(validTitle)
+            .addClass((!validTitle) ? 'btn-secondary' : 'btn-primary')
+            .removeClass((validTitle) ? 'btn-secondary' : 'btn-primary')
+            .prop('disabled', !validTitle);
+        return validTitle;
     }
 
     function addListValues(values, el) {
@@ -171,16 +199,16 @@
     }
 
     function onSuccess(val) {
-        let msg = (val) ? 'Op Successful' : 'No Joy';
-        alert2({
+        Toast.fire({
             title: msg,
-            icon: 'success'
+            icon: 'success',
+            html: val
         });
     }
 
     function doAction(btn) {
-        if (!b_preValidation() &&
-            !['prev', 'read', 'next'].includes(btn.name)) return alert2({
+        if (!b_allSectionsValid() &&
+            !['prev', 'read', 'next', 'reset', 'landscape'].includes(btn.name)) return alert2({
             icon: 'error',
             title: 'Error',
             text: 'Invalid Form'
@@ -195,10 +223,19 @@
             return a;
         }, {});
         switch (btn.name) {
+            case 'landscape':
+                if (title !== '--') {
+                    generateLickLandscape(title);
+                    break;
+                }
+                notifyInsufficientForm('composing lick landscape', true);
+                break;
             case 'reset':
-                enableSave();
                 document.getElementById('ssembed').src = "";
-                $('#mychart').hide();
+                $('#datachart').hide();
+                validateAllSections();
+                enableSave();
+                loading("Done")
                 break;
             case 'prev':
             case 'next':
@@ -234,7 +271,7 @@
                     alert2({
                         showCancelButton: true,
                         text: `Are you sure you want to delete lick: "${lick}"`,
-                        icon: 'question',
+                        icon: 'warning',
                         confirmButtonText: 'Confirm'
                     }).then((result) => {
                         if (result.value) {
@@ -246,13 +283,12 @@
                                     $('input[type=reset]').click();
                                 })
                                 .delete_lick(title, lick);
-                            document.getElementBy
                         }
                         Id('lbl_lick').value = "";
                     });
-                }else {
+                } else {
                     notifyInsufficientForm('update');
-                } 
+                }
                 break;
             case 'update':
                 if (title !== '--' && lick !== '') {
@@ -260,19 +296,19 @@
                         showCancelButton: true,
                         text: `Are you sure you want to update lick: "${lick}"`,
                         icon: 'question',
-                        confirmButtonText: 'Confirm'
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes, update it!'
                     }).then((result) => {
                         log(result)
                         if (result.value) {
                             google.script.run
                                 .withFailureHandler(onFailure)
-                                .withSuccessHandler((data) => {
-                                    let status = (data !== null);
-                                    if (status)
-                                        if (Object.keys(data).includes('ys')) {
-                                            onSuccess(true);
-                                            loadChartData(data);
-                                        }
+                                .withSuccessHandler(() => {
+                                    Toast.fire({
+                                        icon: 'success',
+                                        title: 'Successful Update',
+                                        html: 'Generating Chart...'
+                                    })
                                     $('input[name=read]').click();
                                 })
                                 .update_lick(frm_data);
@@ -301,6 +337,7 @@
                         .withSuccessHandler((data) => {
                             if (Object.keys(data).includes('xs')) loadChartData(data);
                             onSuccess(data);
+                            validateAllSectionsdata();
                         })
                         .processForm(frm_data);
                     $('input[type=reset]').click();
@@ -311,24 +348,25 @@
         loading("Done");
     }
 
-    function notifyInsufficientForm(action)
-    {
+    function notifyInsufficientForm(action, titleOnly) {
         action = action || 'this action';
-        const msg = `Course title and Lick required for ${action}`;
+        const msg = `Course title ${(titleOnly) ? '' : 'and Lick'} required for ${action}`;
         console.log(msg);
-        alert2({
+        Toast.fire({
             text: msg,
             icon: 'error'
         })
         loading("Done");
     }
 
-    function enableSave(b_state){        
-            $('input[name=update]')
-                .addClass((!b_state) ? 'btn-secondary' : 'btn-primary')
-                .removeClass((b_state) ? 'btn-secondary' : 'btn-primary')             
-                .prop('disabled', !b_state);
+    function enableSave() {
+        const b_state = b_allSectionsValid();
+        $('input[name=update]')
+            .addClass((!b_state) ? 'btn-secondary' : 'btn-primary')
+            .removeClass((b_state) ? 'btn-secondary' : 'btn-primary')
+            .prop('disabled', !b_state);
     }
+
     function toggleInsert(name) {
         ['input[name=update]', 'input[name=create]'].forEach(el => {
             let show = (name === 'update');
@@ -346,7 +384,7 @@
             value = key[1];
             key = key[0]
             if (key !== '') {
-                const ctrl = $('#' + key);
+                const ctrl = $(`#${key}`);
                 // if (key.indexOf('loop') >= 0) log(`${ctrl.prop('id')} (${ctrl.prop('type')}): ${value}`);
                 switch (ctrl.prop("type")) {
                     case "radio":
@@ -362,7 +400,8 @@
                 }
             }
         });
-        enableSave(true);
+        validateAllSections();
+        enableSave();
     }
 
     function genLoopObj() {
@@ -370,11 +409,8 @@
             start: document.getElementById('loop_start').value,
             end: document.getElementById('loop_end').value
         }
-        // if (SSIFRAME !== null) {
-        // log(SSIFRAME)
-        SSIFRAME.postMessage(`{"method":"setLoop", "arg" : [${window.loop.start}, ${window.loop.end}]}`,
-            'https://www.soundslice.com');
-        // }
+        if (typeof SSIFRAME !== 'undefined')
+            SSIFRAME.postMessage('{"method":"setLoop", "arg" : [' + window.loop.start + ',' + window.loop.end + ']}', 'www.soundslice.com');
         loading('Done')
     }
 
@@ -388,6 +424,8 @@
             .withSuccessHandler(data => {
                 log(data);
                 if (CURR_EMB_CODE !== data.ss_code) {
+                    CURR_EMB_CODE = data.ss_code;
+                    $('form').data('SHEET_ID', data.wsid);
                     // Soundslice Api: https://www.soundslice.com/help/player-api/#activating
                     let url = 'https://www.soundslice.com/slices/' + data.ss_code + '/embed/?';
                     url +=
@@ -398,7 +436,6 @@
                     url += '&zoom=-10'; // Default zoom is 0, and allowed values are integers between -25 and 25
                     url += '&api=1'; // activate api
                     document.getElementById('ssembed').src = url;
-                    CURR_EMB_CODE = data.ss_code;
                 }
                 genLoopObj();
             })
@@ -410,24 +447,110 @@
             google.script.run
                 .withFailureHandler(onFailure)
                 .withSuccessHandler(loadChartData)
+                .withUserObject(genLickChartConfig)
                 .update_chart(title, lick, action);
         }
     }
 
-    function loadChartData(chart_data) {
-        log(chart_data);
-        let ctx = document.getElementById('mychart').getContext('2d');
-        if (window.lickChart) window.lickChart.destroy();
-        if (!chart_data) return;
-        window.lickChart = new Chart(ctx, genChartConfig(chart_data));
-        // loadMetaData();
-        loading("Done");
+    function generateLickLandscape(course_title) {
+        // id = 1zh-oGZOGsz6-iZ5nk33CyJQ5cXYF1KEiM-wx8fAunv4
+        // construct url to retrieve JSON
+        const course_idx = document.getElementById('course_title')[0].selectedIndex;
+        google.script.run
+            .withFailureHandler(onFailure)
+            .withSuccessHandler(loadChartData)
+            .withUserObject(genLandscapeChartConfig)
+            .get_landscape(course_title);
     }
 
-    function genChartConfig(chart_data) {
-        $('#tabstrip').show();
-        $('#mychart').show();
-        return {
+
+
+    function loadChartData(chart_data, configurator) {
+        log(chart_data);
+        // log(configurator);
+        let ctx = document.getElementById('datachart').getContext('2d');
+        log(CHART);
+        if (CHART) CHART.destroy();
+        if (!chart_data) return;
+        CHART = new Chart(ctx, configurator(chart_data));
+        // loadMetaData();
+        loading("Done");
+        $('#datachart').show();
+    }
+
+    function genLandscapeChartConfig(chart_data) {
+        // log(chart_data);
+        const attribute_names = chart_data.shift();
+        const objDS = {};
+        const datasets = [];
+
+        for (let i = 0; i <= attribute_names.length - 1; i++) {
+            let attr = attribute_names[i];
+            objDS[attr] = [];
+            for (let j = 0; j <= chart_data.length - 1; j++) {
+                objDS[attr].push(chart_data[j][i]);
+            }
+        }
+        const labels = objDS['Lick Name'];
+        delete objDS['Lick Name'];
+        for (let [k, v] of Object.entries(objDS)) {
+            datasets.push({
+                label: k,
+                backgroundColor: genRGBA(objDS[k].length, 1)[0],
+                borderColor: genRGBA(objDS[k].length, 1)[0],
+                data: v,
+                fill: false,
+            });
+        }
+        
+        // log(labels)
+        log(datasets)
+        var config = {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                title: {
+                    display: true,
+                    text: `Course: ${document.getElementById('course_title').value} Landscape`,
+                },
+                tooltips: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                hover: {
+                    mode: 'nearest',
+                    intersect: true
+                },
+                scales: {
+                    xAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Licks'
+                        }
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Value'
+                        }
+                    }]
+                }
+
+            }
+        };
+        log(config);
+        return config;
+    }
+
+    function genLickChartConfig(chart_data) {
+        // $('#tabstrip').show();
+        let config = {
             type: 'bar',
             data: {
                 labels: chart_data.xs,
@@ -480,6 +603,8 @@
                 }
             }
         };
+        log(config);
+        return config;
     }
 
     function genRGBA(numCols, opacity) {
@@ -499,39 +624,9 @@
             .html(msg || "");
     }
 
-    function loader() {
-        preventFormSubmit();
-        getCourses(document.getElementById('course_title'));
-        enableSave();
-        SSIFRAME = document.getElementById('ssembed').contentWindow;
-
-        // add validation checker for inputs
-        document.querySelectorAll("input").forEach((el) => {
-            el.addEventListener('change', (evt) => {
-                // console.log(evt)
-                validateSection($(evt.target).parents('details'));
-            });
-            el.addEventListener('blur', (evt) => {
-                // console.log(evt)
-                validateSection($(evt.target).parents('details'));
-            });
-        });
-
-        // Fetch all the details element.
-        const details = document.querySelectorAll("details");
-        // Add the onclick listeners.
-        details.forEach((targetDetail) => {
-            targetDetail.addEventListener("click", () => {
-                // Close all the details that are not targetDetail.
-                details.forEach((detail) => {
-                    if (detail !== targetDetail) {
-                        detail.removeAttribute("open");
-                    }
-                });
-            }, false);
-            targetDetail.addEventListener("toggle", (e) => {
-                validateSection(e.target);
-            }, false);
+    function validateAllSections() {
+        document.querySelectorAll("details").forEach((section) => {
+            validateSection(section);
         });
     }
 
@@ -559,22 +654,18 @@
             // console.log("Invalid Section")                    
         }
 
-        if (b_preValidation()) {
+        if (b_allSectionsValid()) {
             $('input[name=update]')
                 .prop('disabled', false)
                 .removeClass('btn-secondary')
                 .addClass('btn-primary');
-        }else{
+        } else {
             $('input[name=update]')
                 .prop('disabled', true)
                 .addClass('btn-secondary')
                 .removeClass('btn-primary');
         }
 
-    }
-
-    function b_preValidation() {
-        return $('details').length === $('details summary.valid').length;
     }
 
     function currentDList() {
@@ -594,6 +685,38 @@
         return Swal.fire(obj);
     }
 
+    function loader() {
+        preventFormSubmit();
+        getCourses(document.getElementById('course_title'));
+        enableSave();
+        SSIFRAME = document.getElementById('ssembed').contentWindow;
+
+        // add validation checker for inputs
+        document.querySelectorAll("input").forEach((el) => {
+            el.addEventListener('input', (evt) => {
+                // console.log(evt)
+                validateAllSections($(evt.target).parents('details'));
+            });
+        });
+
+        // Fetch all the details element.
+        const details = document.querySelectorAll("details");
+        // Add the onclick listeners.
+        details.forEach((targetDetail) => {
+            targetDetail.addEventListener("click", () => {
+                // Close all the details that are not targetDetail.
+                details.forEach((detail) => {
+                    if (detail !== targetDetail) {
+                        detail.removeAttribute("open");
+                    }
+                });
+            }, false);
+            targetDetail.addEventListener("toggle", (e) => {
+                validateAllSections(e.target);
+            }, false);
+        });
+    }
+
     window.addEventListener('load', loader);
 
     // Handle inbound current time messages.
@@ -609,7 +732,7 @@
                 break;
             case 'ssPause':
                 log('Play has stopped.');
-                SSIFRAME.postMessage('{"method": "getCurrentTime"}', 'https://www.soundslice.com');
+                SSIFRAME.postMessage('{"method": "getCurrentTime"}', 'www.soundslice.com');
                 break;
             case 'ssAudioEnd':
                 log('Play has stopped due to reaching the end.');
@@ -663,7 +786,7 @@
                 break;
             case 'ssLoopChange':
                 // log('Loop Changed:' + cmd.arg);
-                SSIFRAME.postMessage('{"method": "play"}', 'https://www.soundslice.com');
+                SSIFRAME.postMessage('{"method": "play"}', 'www.soundslice.com');
         }
     });
 </script>

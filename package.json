@@ -4,7 +4,6 @@
   "description": "TXBA Lick Index",
   "main": "Code.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "pushw": "npx clasp push --watch"
   },
   "author": "Antonio Moses",
@@ -20,5 +19,14 @@
     "plugins": [
       "jsdom-quokka-plugin"
     ]
-  }
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StolenThunda/Lick_Index.git"
+  },
+  "bugs": {
+    "url": "https://github.com/StolenThunda/Lick_Index/issues"
+  },
+  "homepage": "https://github.com/StolenThunda/Lick_Index#readme"
 }

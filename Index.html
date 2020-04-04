@@ -4,12 +4,12 @@
 <head>
     <base target="_top">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-    integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">    
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/promise-polyfill"></script> -->
-    
+
     <?!= include('styles'); ?>
     <title>Lick Index Entry</title>
 </head>
@@ -61,11 +61,11 @@
                         <div class="form-group col">
                             <label for="total_notes">Total Notes</label>
                             <input type="number" min="1" max="100" class="form-control" id="total_notes"
-                                name="total_notes"  required>
+                                name="total_notes" required>
                         </div>
                         <div class="form-group col"> <label for="timing_diff">Timing Difficulty</label>
                             <input type="number" min="0" max="100" step="5" class="form-control" id="timing_diff"
-                                name="timing_diff"  required>
+                                name="timing_diff" required>
                         </div>
                         <div class="form-group col">
                             <label for="speed_diff">Speed Difficulty</label>
@@ -79,9 +79,8 @@
                     <div class="form-row">
                         <div class="form-group col">
                             <label for="boxes_used">Boxes Used</label><br />
-                            <input type="number" min="1" max="5" class="form-control" id="boxes_used" 
-                                name="boxes_used">
-                        </div>                        
+                            <input type="number" min="1" max="5" class="form-control" id="boxes_used" name="boxes_used">
+                        </div>
                         <div class="form-group col">
                             <label for="chords">Chords</label><br />
                             <input type="text" id="chords" class="form-control" name="chords" required>
@@ -137,15 +136,18 @@
                     </div>
                 </details>
                 <div class="form-row crud">
-                    <!-- <div>
+                    <div>
                         <input type="reset" class="btn btn-primary" onClick="doAction(this)" name='reset'
-                            value="Reset Form" />
-                    </div> -->
-                    <div> 
+                            value="Reset Form" style="display: none;" />
+                    </div>
+                    <div>
                         <!-- <input type="button" class="btn btn-primary" onClick="doAction(this)" name='create'
                             value="Save" /> -->
-                        <input type="button" class="btn btn-primary" onclick="doAction(this)"
-                            name='update' value="Save/Update Current" disabled />
+                        <input type="button" class="btn btn-primary" onclick="doAction(this)" name='update'
+                            value="Save/Update Current" disabled />
+                    </div>
+                    <div> <input type="button" class="btn btn-secondary" onclick="doAction(this)" name='landscape'
+                            value="Course Landscape" style='display: none;' disabled />
                     </div>
                     <!-- <div> <input type="button" class="btn btn-primary" onclick="doAction(this)" name='delete'
                             value="Delete Lick" />
@@ -160,9 +162,9 @@
         <section id="ss" class='tabcontent'>
             <iframe id='ssembed' src="" width="100%" height="650px" frameBorder="0" allowfullscreen></iframe>
         </section>
-            <section id='myChart' class="tabcontent">
-                <canvas id="mychart"></canvas>
-            </section>
+        <section id='chart' class="tabcontent">
+            <canvas id="datachart"></canvas>
+        </section>
     </div>
     <div id='tip_container' class="form-row">
         <?!=include('criteria');?>
@@ -170,4 +172,5 @@
     <div id="output"> </div>
 </body>
 <?!= include('main'); ?>
+
 </html>

@@ -1,6 +1,7 @@
+/* eslint-disable camelcase */
+
 /* eslint-disable valid-jsdoc */
 /* eslint-disable no-unused-vars */
-/* eslint-disable camelastColase */
 /* eslint-disable require-jsdoc */
 const zip = (ks, vs) => ks.reduce((o, k, i) => {
   o[k] = vs[i];
@@ -50,7 +51,7 @@ function processForm(frm) {
       return ws.appendRow(extract_form_data_(frm));
     } else {
       const v = update_lick(frm, ws);
-      Logger.log(v); 
+      Logger.log(v);
       return v; //
     }
   }
@@ -104,7 +105,7 @@ function process_chart_data(data) {
     ['Attribute', 'value'],
   ];
   Logger.log(head);
-  Logger.log(info); 
+  Logger.log(info);
   idx = [4, 6, 10, 17, 18]; // column index on sheet
   //  change labels
   head[leg_idx] = `${head[leg_idx].split(' ')[0]} Density %(cnt: ${leg_cnt})`;
@@ -158,13 +159,30 @@ function update_chart(sheet, lick, action) {
     header: get_header_row_(ws),
     data: newRange.data,
   });
-  const chart_data = {
+  return {
     xs: data.xs,
     ys: data.ys,
     title: newRange.lick + ' Lick Landscape',
   };
-  Logger.log(chart_data);
-  return chart_data;
+}
+
+function get_sheet_id_() {
+  const id = PropertiesService
+      .getScriptProperties()
+      .getProperty('SPREADSHEET_ID');
+  return id;
+}
+
+function get_landscape(sheet) {
+  const ws = get_sheet_by_course_title_(sheet + '_data');
+  return get_chartable_data_(ws);
+}
+
+function get_chartable_data_(ws) {
+  // const range = ws.getRange('ChartableData');
+  const ranges = SpreadsheetApp.getActive().getNamedRanges();
+  Logger.log(ranges[0].getName());
+  return ranges[0].getRange().getDisplayValues();
 }
 
 function get_lick(sheet, lick, sibling) {
@@ -241,14 +259,17 @@ function get_course_meta(course) {
         row.push(value);
         // Logger.log(value);
       }
-      Logger.log(row);
+      // Logger.log(row);
       break;
     }
   }
   const head = get_simple_header(meta_sh);
   head[0] = 'course';
-  Logger.log(head);
-  return zip(head, row);
+  head.push('wsid');
+  row.push(get_sheet_id_());
+  const final = zip(head, row);
+  Logger.log(final);
+  return final;
 }
 
 function get_simple_header(sh) {
