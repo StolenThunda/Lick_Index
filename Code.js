@@ -27,18 +27,18 @@ function extract_form_data_(frm) {
     parseInt(frm.finger_diff) || 0,
     parseInt(frm.pick_diff) || 0,
     parseInt(frm.legato_cnt) || 0,
-    parseInt(frm.legato_cnt) || 0 / num_notes,
     parseInt(frm.bending_cnt) || 0,
-    parseInt(frm.bending_cnt) || 0 / num_notes,
+    parseInt(frm.intensity) || 0,
+    parseInt(frm.speed_diff) || 0,
+    parseInt(frm.timing_diff) || 0,
+    num_notes,
     frm.has_slides == 'on',
     frm.has_vib == 'on',
     frm.has_mutes == 'on',
+    parseInt(frm.legato_cnt) || 0 / num_notes,
+    parseInt(frm.bending_cnt) || 0 / num_notes,
     frm.boxes_used,
-    parseInt(frm.intensity) || 0,
     frm.chords, 'TBD',
-    num_notes,
-    parseInt(frm.speed_diff) || 0,
-    parseInt(frm.timing_diff) || 0,
   ];
 }
 /* @Process Form */
@@ -89,62 +89,6 @@ function get_licks_names(sheet) {
   return out;
 }
 
-function process_chart_data(data) {
-  // return data;
-  let rem1; let rem2; const msgs = [];
-  head = data.header;
-  info = data.data;
-  // replace count values with density values
-  // TODO: remove hard coded idx
-  const total_notes = info[head.indexOf('Total Notes')];
-  const bnd_idx = head.indexOf('Bending Count');
-  const leg_idx = head.indexOf('Legato Count');
-  const bnd_cnt = info[bnd_idx];
-  const leg_cnt = info[leg_idx];
-  const vals = [
-    ['Attribute', 'value'],
-  ];
-  Logger.log(head);
-  Logger.log(info);
-  idx = [4, 6, 10, 17, 18]; // column index on sheet
-  //  change labels
-  head[leg_idx] = `${head[leg_idx].split(' ')[0]} Density %(cnt: ${leg_cnt})`;
-  head[bnd_idx] = `${head[bnd_idx].split(' ')[0]} Density %(cnt: ${bnd_cnt})`;
-
-  // calculate percentages and set vals
-  info[leg_idx] = parseInt((leg_cnt / total_notes) * 100);
-  info[bnd_idx] = parseInt((bnd_cnt / total_notes) * 100);
-
-  // prune non-chartable values
-  for (let i = idx.length - 1; i >= 0; i--) {
-    Logger.log(`REMOVING (${idx[i]}): ${head[idx[i]]} == ${info[idx[i]]}`);
-    rem1 = head.splice(idx[i], 1);
-    rem2 = info.splice(idx[i], 1);
-    msgs.push(`Removed (${idx[i]}): ${rem1} == ${rem2}`);
-  }
-
-  // remove text fields, percentages, and checkboxes from data
-  for (let j = info.length - 1; j >= 0; j--) {
-    if (typeof info[j] !== 'number') {
-      Logger.log(`${info[j]} : ${typeof info[j]}`);
-      rem1 = head.splice(j, 1);
-      rem2 = info.splice(j, 1);
-      msgs.push(`Removed (${j}): ${rem1} == ${rem2}`);
-    }
-  }
-
-
-  for (let x = 0; x <= info.length - 1; x++) {
-    vals.push([head[x], info[x]]);
-  }
-  Logger.log(`Removed: ${msgs}`);
-  // return vals;
-  return {
-    xs: head,
-    ys: info,
-  };
-}
-
 function delete_lick(sheet, lick) {
   const ws = get_sheet_by_course_title_(sheet);
   const r_idx = get_lick_row_(ws, lick).idx;
@@ -153,12 +97,13 @@ function delete_lick(sheet, lick) {
 }
 
 function update_chart(sheet, lick, action) {
-  const ws = get_sheet_by_course_title_(sheet);
+  ws = get_sheet_by_course_title_(sheet);
   const newRange = get_lick_row_(ws, lick, action);
-  const data = process_chart_data({
-    header: get_header_row_(ws),
-    data: newRange.data,
-  });
+  const data = {
+    xs: get_header_row_(ws).slice(1, 8),
+    ys: newRange.data.slice(1, 8),
+  };
+  Logger.log(`cd: ${JSON.stringify(data, 2, null)}`);
   return {
     xs: data.xs,
     ys: data.ys,
@@ -173,16 +118,17 @@ function get_sheet_id_() {
   return id;
 }
 
-function get_landscape(sheet) {
-  const ws = get_sheet_by_course_title_(sheet + '_data');
-  return get_chartable_data_(ws);
-}
-
-function get_chartable_data_(ws) {
-  // const range = ws.getRange('ChartableData');
-  const ranges = SpreadsheetApp.getActive().getNamedRanges();
-  Logger.log(ranges[0].getName());
-  return ranges[0].getRange().getDisplayValues();
+function get_landscape(sheet, b_all) {
+  const ws = get_sheet_by_course_title_(sheet);
+  let data = [];
+  if (ws) {
+    const numRows = ws.getLastRow();
+    const numCols = b_all ? ws.getLastColumn() : 8
+    ;
+    data = ws.getRange(1, 1, numRows, numCols).getDisplayValues();
+  }
+  Logger.log(data);
+  return data;
 }
 
 function get_lick(sheet, lick, sibling) {
@@ -190,24 +136,24 @@ function get_lick(sheet, lick, sibling) {
   const ws = get_sheet_by_course_title_(sheet);
   const row = get_lick_row_(ws, lick, sibling);
   Logger.log(`sibling: ${sibling}`);
-  Logger.log(`get_lick_row : ${row}`);
+  Logger.log(`get_lick_row : ${row.data}`);
   const form_ctrls = [
     'lbl_lick',
     'finger_diff',
     'pick_diff',
     'legato_cnt',
-    'L_dense',
     'bending_cnt',
-    'B_dense',
+    'intensity',
+    'speed_diff',
+    'timing_diff',
+    'total_notes',
     'has_slides',
     'has_vib',
     'has_mutes',
+    'L_dense',
+    'B_dense',
     'boxes_used',
-    'intensity',
     'chords', 'GEN',
-    'total_notes',
-    'speed_diff',
-    'timing_diff',
     'loop_start',
     'loop_end',
   ];
@@ -273,7 +219,7 @@ function get_course_meta(course) {
 }
 
 function get_simple_header(sh) {
-  return get_header_row_(sh).map( (x) => x.toLowerCase().replace(' ', '_'));
+  return get_header_row_(sh).map((x) => x.toLowerCase().replace(' ', '_'));
 }
 
 /**
@@ -302,6 +248,7 @@ function get_lick_row_(ws, lick, action, trim) {
   for (let i = 2; i <= lastRow; i++) {
     const lick_id = ws.getRange(i, 1).getValue();
     if (lick_id == lick) {
+      // gives the ability to get the prev/next lick
       offset = (i + offset === 1 || i + offset > lastRow) ? 0 : offset;
       r = ws.getRange(i + offset, 1, 1, (trim) ? lastCol - 2 : lastCol);
       range.lick = ws.getRange(i + offset, 1).getValue();

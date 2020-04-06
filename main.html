@@ -1,6 +1,64 @@
 <script>
-    "use strict";
-    let SSIFRAME;
+    // "use strict";
+    const OBJ_Loop = {};
+    var ssPlayerIsReady;
+    const effectColors = {
+        highlight: 'rgba(255, 255, 255, 0.75)',
+        shadow: 'rgba(0, 0, 0, 0.5)',
+        innerglow: 'rgba(255, 255, 0, 0.5)',
+        outerglow: 'rgb(255, 255, 0)',
+    };
+    const chart_defaults = {
+        bar: {
+            opts: (color) => {
+                const cfg_colors = {backgroundColor: color}
+                const cfg_effects = {                   
+                    borderWidth: 0,
+                    shadowOffsetX: 3,
+                    shadowOffsetY: 3,
+                    shadowBlur: 10,
+                    shadowColor: effectColors.shadow,
+                    bevelWidth: 2,
+                    bevelHighlightColor: effectColors.highlight,
+                    bevelShadowColor: effectColors.shadow,
+                    hoverInnerGlowWidth: 20,
+                    hoverInnerGlowColor: effectColors.glow,
+                    hoverOuterGlowWidth: 20,
+                    hoverOuterGlowColor: effectColors.glow
+                }
+                return Object.assign((color) ? cfg_colors : {}, cfg_effects);
+            }
+        },
+        line: {
+            opts: (color) => {
+                const cfg_colors = {
+                    backgroundColor: color,
+                    borderColor: color,
+                    pointBorderColor: color,
+                    pointBackgroundColor: color,
+                };
+                const cfg_effects = {                    
+                    fill: false,
+                    shadowOffsetX: 3,
+                    shadowOffsetY: 3,
+                    shadowBlur: 10,
+                    shadowColor: effectColors.shadow,
+                    pointRadius: 4,
+                    pointBevelWidth: 2,
+                    pointBevelHighlightColor: effectColors.highlight,
+                    pointBevelShadowColor: effectColors.shadow,
+                    pointHoverRadius: 6,
+                    pointHoverBevelWidth: 3,
+                    pointHoverInnerGlowWidth: 20,
+                    pointHoverInnerGlowColor: effectColors.innerglow,
+                    pointHoverOuterGlowWidth: 20,
+                    pointHoverOuterGlowColor: effectColors.outerglow
+                }
+                return Object.assign((color) ? cfg_colors : {}, cfg_effects);
+            }
+        }
+    }
+    const SSIFRAME = document.getElementById('ssembed').contentWindow;
     let CURR_EMB_CODE;
     let SHEET_ID = window.SHEET_ID || null;
     let CHART;
@@ -46,28 +104,25 @@
             cell.innerHTML = `<b>${headers[i]}</b>`
         }
 
-        // FINALLY ADD THE NEWLY CREATED TABLE TO A CONTAINER.
-        const btn = document.createElement("BUTTON");
-        btn.className = 'btn btn-primary';
-        btn.innerHTML = "Clear";
-        btn.onclick = () => {
-            const divContainer = document.getElementById("output");
-            divContainer.innerHTML = " ";
-        };
-        document.getElementById("output").appendChild(btn);
-        document.getElementById("output").appendChild(table);
-        $('#output table').DataTable({
-        "scrollY": 200,
-        "scrollX": true
-    } );
-
-        // btn.style.cssText = "display: block;top: 0px !important;"
-        // alert2({
-        //     title: "Current Data",
-        //     icon: 'info',
-        //     html: $('#output').clone(),
-        //     customClass: 'swal-output'
-        // });
+        alertWithContent(table, {
+            title: $('#course_title').val()
+        });
+        $('.swal2-content table').DataTable({
+            pageLength: 10,
+            lengthMenu: [
+                [10, 50, 100, 500, -1],
+                [10, 50, 100, 500, "All"]
+            ],
+            aoColumns: null,
+            retrieve: true,
+            pagingType: "full_numbers",
+            scrollY: 300,
+            scrollCollapse: true,
+            scrollX: true,
+            info: true,
+            autoWidth: true,
+            paging: true
+        });
     }
 
     function createDefaultTooltips() {
@@ -79,7 +134,6 @@
                         (eg. Solo 1 Lick 7, S1L7,
                         Chorus 3 Lick 5, C3L5,
                         Lesson 1 Pattern 3, L1P3)`
-
         };
         const course_title = document.createElement("PRE");
         course_title.id = "tip_course_title";
@@ -92,7 +146,6 @@
         const tips = document.getElementById('tip_container');
         tips.appendChild(course_title);
         tips.appendChild(lbl_lick);
-
     }
 
     function labels() {
@@ -162,12 +215,10 @@
     }
 
     function initPage(e) {
+        ssPlayerIsReady = false;
         enableBtnLandscape(e);
         if (!getLicks(e)) return;
-        loadMetaData(e);
-        if (typeof SSIFRAME !== 'undefined') {
-            SSIFRAME.postMessage('{"method": "clearLoop"}', 'www.soundslice.com');
-        }
+        ssControls('{"method": "clearLoop"}');
     }
 
     function enableBtnLandscape(e) {
@@ -177,7 +228,7 @@
             .addClass((!validTitle) ? 'btn-secondary' : 'btn-primary')
             .removeClass((validTitle) ? 'btn-secondary' : 'btn-primary')
             .prop('disabled', !validTitle);
-        return validTitle;
+        return e;
     }
 
     function addListValues(values, el) {
@@ -222,12 +273,14 @@
 
     function doAction(btn) {
         if (!b_allSectionsValid() &&
-            !['prev', 
-            'read', 
-            'next', 
-            'reset', 
-            'landscape', 
-            'dump'].includes(btn.name)) return alert2({
+            !['prev',
+                'read',
+                'next',
+                'reset',
+                'landscape',
+                'dump',
+                'lick'
+            ].includes(btn.name)) return alert2({
             icon: 'error',
             title: 'Error',
             text: 'Invalid Form'
@@ -242,6 +295,16 @@
             return a;
         }, {});
         switch (btn.name) {
+            case 'lick':
+                if (title !== '--' && lick !== '') {
+                    let command = '{"method":"setLoop", "arg" : [' + OBJ_Loop.start + ',' + OBJ_Loop.end + ']}';
+                    log(command);
+                    ssControls(command);
+                    loading('DONE');
+                    break;
+                }
+                notifyInsufficientForm('play licks');
+                break;
             case 'landscape':
                 if (title !== '--') {
                     generateLickLandscape(title);
@@ -251,7 +314,7 @@
                 break;
             case 'reset':
                 document.getElementById('ssembed').src = "";
-                $('#datachart').hide();
+                // $('#datachart').hide();
                 validateAllSections();
                 enableSave();
                 loading("Done")
@@ -264,8 +327,12 @@
                     google.script.run
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(populateForm)
+                        .withUserObject({
+                            t: title,
+                            l: lick,
+                            s: sibling
+                        })
                         .get_lick(title, lick, sibling);
-                    updateChartData(title, lick, sibling);
                     loadMetaData();
                     break;
                 }
@@ -276,7 +343,7 @@
                     google.script.run
                         .withFailureHandler(onFailure)
                         .withSuccessHandler(output_table)
-                        .get_landscape(title);
+                        .get_landscape(title, true);
                     loading("Done");
                     break;
                 }
@@ -369,7 +436,7 @@
 
     function notifyInsufficientForm(action, titleOnly) {
         action = action || 'this action';
-        const msg = `Course title ${(titleOnly) ? '' : 'and Lick'} required for ${action}`;
+        const msg = `Course title ${(titleOnly) ? '' : 'and Lick'} required for ${action}!`;
         console.log(msg);
         Toast.fire({
             text: msg,
@@ -396,7 +463,8 @@
         });
     }
 
-    function populateForm(data) {
+    function populateForm(data, chart_params) {
+        // log(data);
         if (!data) return;
         if (Object.keys(data).includes(['name', 'message'])) return onFailure(data);
         Object.entries(data).forEach(function (key, value) {
@@ -421,17 +489,15 @@
         });
         validateAllSections();
         enableSave();
+        genLoopObj();
+        updateChartData(chart_params.t, chart_params.l, chart_params.s);
     }
 
     function genLoopObj() {
-        window.loop = {
-            start: document.getElementById('loop_start').value,
-            end: document.getElementById('loop_end').value
-        }
-        if (typeof SSIFRAME !== 'undefined')
-            SSIFRAME.postMessage('{"method":"setLoop", "arg" : [' + window.loop.start + ',' + window.loop.end + ']}',
-                'www.soundslice.com');
         loading('Done')
+        OBJ_Loop.start = document.getElementById('loop_start').value;
+        OBJ_Loop.end = document.getElementById('loop_end').value;
+        log(OBJ_Loop);
     }
 
     function loadMetaData(e) {
@@ -442,7 +508,7 @@
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(data => {
-                log(data);
+                // log(data);
                 if (CURR_EMB_CODE !== data.ss_code) {
                     CURR_EMB_CODE = data.ss_code;
                     $('form').data('SHEET_ID', data.wsid);
@@ -457,7 +523,6 @@
                     url += '&api=1'; // activate api
                     document.getElementById('ssembed').src = url;
                 }
-                genLoopObj();
             })
             .get_course_meta(title);
     }
@@ -483,23 +548,29 @@
             .get_landscape(course_title);
     }
 
-
-
     function loadChartData(chart_data, configurator) {
-        // log(chart_data);
-        // log(configurator);
-        let ctx = document.getElementById('datachart').getContext('2d');
-        log(CHART);
+        let dChart = document.getElementById('datachart');
+        while (dChart === null) {
+            $('#chart').append($('<canvas>', {
+                id: 'datachart'
+            }))
+            dChart = document.getElementById('datachart');
+        }
+
+        let ctx = dChart.getContext('2d');
+        // log(CHART);
         if (CHART) CHART.destroy();
         if (!chart_data) return;
         CHART = new Chart(ctx, configurator(chart_data));
-        // loadMetaData();
         loading("Done");
-        $('#datachart').show();
+        alertWithContent($('#datachart'));
+        const show_graphs = $('#show_graphs').val();
+        log(show_graphs)
+        if (show_graphs == 'on') $('input[name=lick]').click();
     }
 
     function genLandscapeChartConfig(chart_data) {
-        // log(chart_data);
+        log(chart_data);
         const attribute_names = chart_data.shift();
         let idx = 0;
         const config = {
@@ -513,19 +584,18 @@
         const lick_selected = (lick.length > 0);
         // log(`Sel: ${lick_selected}; Lick: ${lick} (${typeof lick})`)
         if (lick_selected) {
-            attribute_names.pop();
+            type = 'bar';
+            attribute_names.shift();
             config.labels = attribute_names;
             chart_data.forEach(data => {
                 let ds_lbl = data.shift();
-                config.datasets.push({
+                let color = genRGBA(data.length, 1)[0];
+                config.datasets.push(Object.assign({
                     label: ds_lbl,
-                    backgroundColor: genRGBA(data.length, 1)[0],
-                    borderColor: genRGBA(data.length, 1)[0],
                     type: 'bar',
-                    data: data,
                     hidden: (ds_lbl !== lick),
-                    fill: false,
-                });
+                    data: data
+                }, chart_defaults[type].opts(color)));
             });
             config.xAxes_label = 'Attributes';
             config.title = lick;
@@ -539,15 +609,15 @@
             }
             config.labels = objDS['Lick Name'];
             delete objDS['Lick Name'];
+            type = 'line';
             for (let [k, v] of Object.entries(objDS)) {
-                config.datasets.push({
+
+                let color = genRGBA(objDS[k].length, 1)[0];
+                config.datasets.push(Object.assign({
                     label: k,
-                    backgroundColor: genRGBA(objDS[k].length, 1)[0],
-                    borderColor: genRGBA(objDS[k].length, 1)[0],
                     data: v,
-                    hidden: (idx !== 0),
-                    fill: false,
-                });
+                    // hidden: (idx !== 0), //enable only first attribute by default
+                }, chart_defaults[type].opts(color)));
                 idx++;
             }
             config.title = `Course: ${document.getElementById('course_title').value}`;
@@ -563,7 +633,8 @@
                 responsive: true,
                 title: {
                     display: true,
-                    text:  `${config.title} Landscape`,
+                    text: `${config.title} Landscape`,
+                    fontSize: 20,
                 },
                 legend: {
                     position: 'left'
@@ -591,21 +662,42 @@
                             labelString: config.yAxes_label
                         }
                     }]
+                },
+                tooltips: {
+                    shadowOffsetX: 3,
+                    shadowOffsetY: 3,
+                    shadowBlur: 10,
+                    shadowColor: effectColors.shadow,
+                    bevelWidth: 2,
+                    bevelHighlightColor: effectColors.highlight,
+                    bevelShadowColor: effectColors.shadow
+                },
+                legend: {
+                    labels: {
+                        usePointStyle: true
+                    }
+                },
+                layout: {
+                    padding: {
+                        right: 20
+                    }
                 }
-
             }
         };
     }
 
     function genLickChartConfig(chart_data) {
-        // $('#tabstrip').show();
+        const type = 'bar';
+        const color = genRGBA(chart_data.xs.length, 1)[0];
         let config = {
-            type: 'bar',
+            type: type,
             data: {
                 labels: chart_data.xs,
-                datasets: [{
-                    data: chart_data.ys,
-                }]
+                datasets: [
+                    Object.assign({
+                        data: chart_data.ys
+                    }, chart_defaults[type].opts())
+                ]
             },
             options: {
                 legend: {
@@ -646,12 +738,13 @@
                 elements: {
                     rectangle: {
                         backgroundColor: genRGBA(chart_data.xs.length, 1),
-                        borderColor: genRGBA(chart_data.xs.length, 2),
+                        borderColor: genRGBA(chart_data.xs.length, 1),
                         borderWidth: 1
                     }
                 }
             }
         };
+        // config = Object.assign( chart_defaults[config.type].opts(color),config.data.datasets[0]);
         log(config);
         return config;
     }
@@ -717,6 +810,12 @@
 
     }
 
+    function ssControls(cmd){
+        log(cmd);
+        var ssiframe = document.getElementById('ssembed').contentWindow;
+        if (ssPlayerIsReady) ssiframe.postMessage(cmd, 'https://www.soundslice.com');
+    }
+
     function currentDList() {
         const opts = document.getElementById('lick_names').options;
         let arrData = [...opts];
@@ -734,11 +833,16 @@
         return Swal.fire(obj);
     }
 
+    function alertWithContent(content, config) {
+        Swal.fire(Object.assign({}, config));
+        $('.swal2-content').append(content);
+    }
+
     function loader() {
         preventFormSubmit();
         getCourses(document.getElementById('course_title'));
         enableSave();
-        SSIFRAME = document.getElementById('ssembed').contentWindow;
+
 
         // add validation checker for inputs
         document.querySelectorAll("input").forEach((el) => {
@@ -775,13 +879,14 @@
         switch (cmd.method) {
             case 'ssPlayerReady':
                 log('Player is ready.');
+                ssPlayerIsReady = true;
                 break;
             case 'ssPlay':
                 log('Play has started.');
                 break;
             case 'ssPause':
                 log('Play has stopped.');
-                SSIFRAME.postMessage('{"method": "getCurrentTime"}', 'www.soundslice.com');
+                ssControls('{"method": "getCurrentTime"}');
                 break;
             case 'ssAudioEnd':
                 log('Play has stopped due to reaching the end.');
@@ -828,14 +933,13 @@
                 break;
             case 'ssNotationVisibility':
                 log('Notation visibility is now ' + cmd.arg);
-
                 break;
             case 'ssFullscreenSupport':
                 log('Does this browser support full screen? ' + cmd.arg);
                 break;
             case 'ssLoopChange':
-                // log('Loop Changed:' + cmd.arg);
-                SSIFRAME.postMessage('{"method": "play"}', 'www.soundslice.com');
+                log('Loop Changed:' + cmd.arg);
+                ssControls('{"method": "play"}');
         }
     });
 </script>

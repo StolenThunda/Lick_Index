@@ -35,8 +35,12 @@
         margin-right: 5px;
     }
 
-    .swal-output {
+    .swal2-output, .swal2-popup {
         width: inherit !important;
+    }
+
+    .swal2-content {
+        width: 80vw;
     }
     .container.form_row {
         justify-content: space-between;
@@ -84,10 +88,9 @@
         margin-left: 5% !important;
         grid-gap: 5px;
         display: grid;
-        grid-template-areas: 'form ss ss'
-                             'form datachart datachart'
-                             'form datachart datachart'
-                             'output datachart datachart';
+        grid-template-areas: 'form ss ss';
+                             /* 'form ss ss'
+                             'datachart datachart output'; */
         grid-template-rows: auto auto auto;
     }
 
@@ -116,7 +119,7 @@
     #tip_container {
         display: none;
     }
-
+/* 
     table,
     th,
     td {
@@ -167,7 +170,7 @@
     .tooltip:hover .tooltiptext {
         visibility: visible;
         opacity: 1;
-    }
+    } */
 
     pre {
         text-align: initial !important;
