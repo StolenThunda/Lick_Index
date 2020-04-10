@@ -1,4 +1,6 @@
-# [TXBA Lick Entry](https://script.google.com/macros/s/AKfycbyo-M3mNP5UrrJxnfe3-ncKWZMFUNTARkVbKEFTBKk/dev) 
+# TXBA Lick Entry
+
+Form Link: *[https://script.google.com/macros/s/AKfycbyo-M3mNP5UrrJxnfe3-ncKWZMFUNTARkVbKEFTBKk/dev](https://script.google.com/macros/s/AKfycbyo-M3mNP5UrrJxnfe3-ncKWZMFUNTARkVbKEFTBKk/dev)* 
 
 - [TXBA Lick Entry](#txba-lick-entry)
   - [Purpose](#purpose)
