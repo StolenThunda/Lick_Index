@@ -11,8 +11,10 @@
     const chart_defaults = {
         bar: {
             opts: (color) => {
-                const cfg_colors = {backgroundColor: color}
-                const cfg_effects = {                   
+                const cfg_colors = {
+                    backgroundColor: color || null
+                }
+                const cfg_effects = {
                     borderWidth: 0,
                     shadowOffsetX: 3,
                     shadowOffsetY: 3,
@@ -32,12 +34,12 @@
         line: {
             opts: (color) => {
                 const cfg_colors = {
-                    backgroundColor: color,
-                    borderColor: color,
-                    pointBorderColor: color,
-                    pointBackgroundColor: color,
+                    backgroundColor: color || null,
+                    borderColor: color || null,
+                    pointBorderColor: color || null,
+                    pointBackgroundColor: color || null,
                 };
-                const cfg_effects = {                    
+                const cfg_effects = {
                     fill: false,
                     shadowOffsetX: 3,
                     shadowOffsetY: 3,
@@ -210,25 +212,48 @@
             .withSuccessHandler(addListValues)
             .withUserObject(lick_list)
             .get_licks_names(title);
-
         return true;
     }
 
     function initPage(e) {
         ssPlayerIsReady = false;
         enableBtnLandscape(e);
+        loadMetaData();
         if (!getLicks(e)) return;
         ssControls('{"method": "clearLoop"}');
     }
+    /* Set the width of the sidebar to 250px (show it) */
+    function openNav() {
+        document.getElementById("mySidepanel").style.width = "250px";
+    }
+
+    /* Set the width of the sidebar to 0 (hide it) */
+    function closeNav() {
+        document.getElementById("mySidepanel").style.width = "0";
+    }
 
     function enableBtnLandscape(e) {
-        const validTitle = e.options[e.selectedIndex].text !== '--';
+        if (!e) e = document.getElementById('course_title');
+        let validTitle = e.options[e.selectedIndex].text !== '--' &&
+            $('#show_graphs').is(':checked');
         $('input[name=landscape]')
-            .toggle(validTitle)
-            .addClass((!validTitle) ? 'btn-secondary' : 'btn-primary')
-            .removeClass((validTitle) ? 'btn-secondary' : 'btn-primary')
+            .addClass((!validTitle) ? 'btn-danger' : 'btn-info')
+            .removeClass((validTitle) ? 'btn-danger' : 'btn-info')
             .prop('disabled', !validTitle);
         return e;
+        // .toggle(validTitle)
+    }
+
+    function enableBtnLick(e) {
+        // return false;
+        const lbl_val = (e) ? e.target.value : $('#lbl_lick').val();
+        let show = lbl_val.length > 3;
+        show = show && ($('input[name^=loop').val() !== "");
+        $('input[name=lick]')
+            .addClass((!show) ? 'btn-danger' : 'btn-info')
+            .removeClass((show) ? 'btn-danger' : 'btn-info')
+            .prop('disabled', !show);
+        // .toggle(show)
     }
 
     function addListValues(values, el) {
@@ -296,14 +321,15 @@
         }, {});
         switch (btn.name) {
             case 'lick':
-                if (title !== '--' && lick !== '') {
+                if (title !== '--' &&
+                    lick !== '' &&
+                    $('input[name^=loop]').val() !== "") {
                     let command = '{"method":"setLoop", "arg" : [' + OBJ_Loop.start + ',' + OBJ_Loop.end + ']}';
-                    log(command);
                     ssControls(command);
                     loading('DONE');
                     break;
                 }
-                notifyInsufficientForm('play licks');
+                notifyInsufficientForm('playing licks');
                 break;
             case 'landscape':
                 if (title !== '--') {
@@ -333,7 +359,7 @@
                             s: sibling
                         })
                         .get_lick(title, lick, sibling);
-                    loadMetaData();
+
                     break;
                 }
                 notifyInsufficientForm('search');
@@ -448,8 +474,8 @@
     function enableSave() {
         const b_state = b_allSectionsValid();
         $('input[name=update]')
-            .addClass((!b_state) ? 'btn-secondary' : 'btn-primary')
-            .removeClass((b_state) ? 'btn-secondary' : 'btn-primary')
+            .addClass((!b_state) ? 'btn-danger' : 'btn-success')
+            .removeClass((b_state) ? 'btn-danger' : 'btn-success')
             .prop('disabled', !b_state);
     }
 
@@ -457,9 +483,9 @@
         ['input[name=update]', 'input[name=create]'].forEach(el => {
             let show = (name === 'update');
             $(el)
-                .toggleClass('btn-secondary', 'btn-primary')
+                .toggleClass('btn-danger', 'btn-success')
                 .toggle(($(el).name == 'create') ? !show : show)
-                .prop('disabled', !$(el).hasClass('btn-primary'));
+                .prop('disabled', !$(el).hasClass('btn-success'));
         });
     }
 
@@ -487,9 +513,10 @@
                 }
             }
         });
+        genLoopObj();
         validateAllSections();
         enableSave();
-        genLoopObj();
+        enableBtnLick();
         updateChartData(chart_params.t, chart_params.l, chart_params.s);
     }
 
@@ -519,7 +546,9 @@
                     url += '&narrow_video_height=45p'; // video is 45% of iframe
                     url += '&recording_idx=2'; // switch to video
                     url += '&horiz=1'; // notation will scroll continuously to the right
-                    url += '&zoom=-10'; // Default zoom is 0, and allowed values are integers between -25 and 25
+                    url += '&zoom=-10'; // default zoom is 0, and allowed values are integers between -25 and 25
+                    url += '&show_staff=0'; // hide all standard notation
+                    url += '&narrow_video_height=60p'; // video is 60% of the height of the iframe
                     url += '&api=1'; // activate api
                     document.getElementById('ssembed').src = url;
                 }
@@ -538,9 +567,7 @@
     }
 
     function generateLickLandscape(course_title) {
-        // id = 1zh-oGZOGsz6-iZ5nk33CyJQ5cXYF1KEiM-wx8fAunv4
-        // construct url to retrieve JSON
-        const course_idx = document.getElementById('course_title')[0].selectedIndex;
+        $("#play_lick").prop("checked", false);
         google.script.run
             .withFailureHandler(onFailure)
             .withSuccessHandler(loadChartData)
@@ -548,7 +575,8 @@
             .get_landscape(course_title);
     }
 
-    function loadChartData(chart_data, configurator) {
+    function loadChartData(chart_data, configurator, show) {
+        log(chart_data);
         let dChart = document.getElementById('datachart');
         while (dChart === null) {
             $('#chart').append($('<canvas>', {
@@ -558,19 +586,30 @@
         }
 
         let ctx = dChart.getContext('2d');
-        // log(CHART);
         if (CHART) CHART.destroy();
         if (!chart_data) return;
         CHART = new Chart(ctx, configurator(chart_data));
         loading("Done");
-        alertWithContent($('#datachart'));
-        const show_graphs = $('#show_graphs').val();
-        log(show_graphs)
-        if (show_graphs == 'on') $('input[name=lick]').click();
+        
+        const show_graphs = $('#show_graphs').is(':checked')
+        const play_lick = $('#play_lick').is(':checked')
+        if ($('#show_graphs').is(':checked')) {
+            log(`Show Graphs: ${show_graphs}`)
+            alertWithContent(dChart);
+        } else {
+            $('#datachart').hide();
+        }
+
+        if ($('#play_lick').is(':checked') &&
+            $('input[name^=loop]').val() !== ""
+        ) {
+            log(`Auto Play licks: ${play_lick}`)
+            doAction(document.getElementById('lick'));
+        }
     }
 
     function genLandscapeChartConfig(chart_data) {
-        log(chart_data);
+        // log(chart_data);
         const attribute_names = chart_data.shift();
         let idx = 0;
         const config = {
@@ -598,7 +637,7 @@
                 }, chart_defaults[type].opts(color)));
             });
             config.xAxes_label = 'Attributes';
-            config.title = lick;
+            config.title = lick + " (in context) ";
         } else {
             for (let i = 0; i <= attribute_names.length - 1; i++) {
                 let attr = attribute_names[i];
@@ -616,7 +655,7 @@
                 config.datasets.push(Object.assign({
                     label: k,
                     data: v,
-                    // hidden: (idx !== 0), //enable only first attribute by default
+                    // hidden: (idx !== 0),
                 }, chart_defaults[type].opts(color)));
                 idx++;
             }
@@ -624,12 +663,18 @@
         }
         log(config);
         return {
+            fill: false,
             type: 'line',
             data: {
                 labels: config.labels,
                 datasets: config.datasets
             },
             options: {
+                plugins: {
+                    colorschemes: {
+                        scheme: 'tableau.JewelBright9'
+                    }
+                },
                 responsive: true,
                 title: {
                     display: true,
@@ -637,7 +682,10 @@
                     fontSize: 20,
                 },
                 legend: {
-                    position: 'left'
+                    position: 'left',
+                    labels: {
+                        usePointStyle: true
+                    }
                 },
                 tooltips: {
                     mode: 'index',
@@ -656,10 +704,14 @@
                         }
                     }],
                     yAxes: [{
+                        beginAtZero: true,
                         display: true,
                         scaleLabel: {
                             display: true,
                             labelString: config.yAxes_label
+                        },
+                        ticks: {
+                            max: 100
                         }
                     }]
                 },
@@ -672,11 +724,6 @@
                     bevelHighlightColor: effectColors.highlight,
                     bevelShadowColor: effectColors.shadow
                 },
-                legend: {
-                    labels: {
-                        usePointStyle: true
-                    }
-                },
                 layout: {
                     padding: {
                         right: 20
@@ -687,8 +734,8 @@
     }
 
     function genLickChartConfig(chart_data) {
+        // log(chart_data);
         const type = 'bar';
-        const color = genRGBA(chart_data.xs.length, 1)[0];
         let config = {
             type: type,
             data: {
@@ -744,7 +791,6 @@
                 }
             }
         };
-        // config = Object.assign( chart_defaults[config.type].opts(color),config.data.datasets[0]);
         log(config);
         return config;
     }
@@ -763,7 +809,7 @@
     function loading(msg) {
         $('#loader')
             .toggle(msg.toLowerCase() !== "done")
-            .html(msg || "");
+            .html(msg || "Loading");
     }
 
     function validateAllSections() {
@@ -799,21 +845,22 @@
         if (b_allSectionsValid()) {
             $('input[name=update]')
                 .prop('disabled', false)
-                .removeClass('btn-secondary')
-                .addClass('btn-primary');
+                .removeClass('btn-danger')
+                .addClass('btn-success');
         } else {
             $('input[name=update]')
                 .prop('disabled', true)
-                .addClass('btn-secondary')
-                .removeClass('btn-primary');
+                .addClass('btn-danger')
+                .removeClass('btn-success');
         }
 
     }
 
-    function ssControls(cmd){
+    function ssControls(cmd) {
         log(cmd);
         var ssiframe = document.getElementById('ssembed').contentWindow;
-        if (ssPlayerIsReady) ssiframe.postMessage(cmd, 'https://www.soundslice.com');
+        // if (ssPlayerIsReady) 
+        ssiframe.postMessage(cmd, 'https://www.soundslice.com');
     }
 
     function currentDList() {
@@ -842,12 +889,14 @@
         preventFormSubmit();
         getCourses(document.getElementById('course_title'));
         enableSave();
-
+        $('#show_graphs').on('change', (e) => {
+            enableBtnLandscape()
+        })
 
         // add validation checker for inputs
         document.querySelectorAll("input").forEach((el) => {
             el.addEventListener('input', (evt) => {
-                // console.log(evt)
+                enableBtnLick(evt);
                 validateAllSections($(evt.target).parents('details'));
             });
         });
@@ -939,7 +988,7 @@
                 break;
             case 'ssLoopChange':
                 log('Loop Changed:' + cmd.arg);
-                ssControls('{"method": "play"}');
+                if ($('#play_lick').is(':checked')) ssControls('{"method": "play"}');
         }
     });
 </script>
